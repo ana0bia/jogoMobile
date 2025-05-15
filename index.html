@@ -263,6 +263,18 @@
             font-weight: bold;
         }
         
+        /* Estilos para os botões no modal final */
+        .modal-content .button-container {
+            margin-top: 15px;
+            width: 100%;
+        }
+        
+        .modal-content .button-container button,
+        .modal-content .button-container .Avaliar-btn {
+            max-width: 100%;
+            margin: 5px 0;
+        }
+        
         /* Ajustes para telas muito pequenas */
         @media (max-width: 350px) {
             .game-board {
@@ -330,7 +342,11 @@
                 <input type="text" id="playerName" maxlength="20" placeholder="Seu nome">
                 <button id="saveScoreBtn">Salvar Pontuação</button>
             </div>
-            <button id="playAgainBtn">Jogar Novamente</button>
+            <div class="button-container">
+                <button id="playAgainBtn">Jogar Novamente</button>
+                <button id="restartGameBtn">Recomeçar Jogo</button>
+                <a class="Avaliar-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSe1w2-QKmHarw_zLXNERODz3X1shpDnYoljxnA3a4OruX4Amg/viewform?usp=dialog">Avalie-nos</a>
+            </div>
         </div>
     </div>
     
@@ -426,6 +442,7 @@
         const newHighScore = document.getElementById('newHighScore');
         const saveScoreBtn = document.getElementById('saveScoreBtn');
         const playAgainBtn = document.getElementById('playAgainBtn');
+        const restartGameBtn = document.getElementById('restartGameBtn');
         const rankingModal = document.getElementById('rankingModal');
         const rankingBody = document.getElementById('rankingBody');
         const closeRankingBtn = document.getElementById('closeRankingBtn');
@@ -744,6 +761,13 @@
         playAgainBtn.addEventListener('click', () => {
             gameCompleteModal.style.display = 'none';
             initGame();
+        });
+        
+        restartGameBtn.addEventListener('click', () => {
+            gameCompleteModal.style.display = 'none';
+            currentPhase = 1;
+            score = 0;
+            startPhase();
         });
         
         saveScoreBtn.addEventListener('click', () => {
