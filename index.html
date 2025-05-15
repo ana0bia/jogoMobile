@@ -47,6 +47,7 @@
             width: 100%;
             margin-bottom: 15px;
             padding: 0 5px;
+            position: relative;
         }
         
         .card {
@@ -275,6 +276,26 @@
             margin: 5px 0;
         }
         
+        /* Timer styles */
+        .countdown-timer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50%;
+            font-size: 2rem;
+            font-weight: bold;
+            z-index: 10;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
         /* Ajustes para telas muito pequenas */
         @media (max-width: 350px) {
             .game-board {
@@ -424,6 +445,7 @@
         let currentPhase = 1;
         let gameActive = false;
         let phaseActive = false;
+        let countdownInterval;
         
         // Elementos do DOM
         const gameBoard = document.getElementById('gameBoard');
@@ -554,6 +576,44 @@
                 cardElement.addEventListener('click', () => flipCard(index));
                 gameBoard.appendChild(cardElement);
             });
+            
+            // Mostrar todas as cartas por 5 segundos no início
+            showAllCardsTemporarily();
+        }
+        
+        // Mostrar todas as cartas por 5 segundos no início da fase
+        function showAllCardsTemporarily() {
+            // Virar todas as cartas
+            cards.forEach((card, index) => {
+                gameBoard.children[index].classList.add('flipped');
+            });
+            
+            // Criar e exibir o timer
+            const timerElement = document.createElement('div');
+            timerElement.className = 'countdown-timer';
+            timerElement.textContent = '5';
+            gameBoard.appendChild(timerElement);
+            
+            let seconds = 5;
+            
+            // Atualizar o timer a cada segundo
+            countdownInterval = setInterval(() => {
+                seconds--;
+                timerElement.textContent = seconds.toString();
+                
+                if (seconds <= 0) {
+                    clearInterval(countdownInterval);
+                    gameBoard.removeChild(timerElement);
+                    
+                    // Virar as cartas de volta
+                    cards.forEach((card, index) => {
+                        gameBoard.children[index].classList.remove('flipped');
+                    });
+                    
+                    // Agora o jogador pode começar a jogar
+                    phaseActive = true;
+                }
+            }, 1000);
         }
         
         // Mostrar pré-visualização das formas
@@ -753,7 +813,7 @@
         // Event Listeners
         startPhaseBtn.addEventListener('click', () => {
             previewModal.style.display = 'none';
-            phaseActive = true;
+            // O phaseActive será definido como true após os 5 segundos de visualização
         });
         
         nextPhaseBtn.addEventListener('click', nextPhase);
