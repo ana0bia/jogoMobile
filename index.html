@@ -296,6 +296,67 @@
             justify-content: center;
         }
         
+        /* Power-up indicator */
+        .power-up-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: #e74c3c;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            z-index: 5;
+            display: none;
+        }
+        
+        /* Reveal button */
+        .reveal-btn {
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin: 3px;
+            transition: background-color 0.3s;
+            flex-grow: 1;
+            max-width: 45%;
+            text-decoration: none;
+            text-align: center;
+            display: none; /* Inicialmente escondido */
+        }
+        
+        .reveal-btn:hover {
+            background-color: #d35400;
+        }
+        
+        /* Message modal */
+        .message-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+        
+        .message-content {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 80%;
+            text-align: center;
+        }
+        
         /* Ajustes para telas muito pequenas */
         @media (max-width: 350px) {
             .game-board {
@@ -307,7 +368,7 @@
                 -webkit-line-clamp: 4;
             }
             
-            button, .Avaliar-btn {
+            button, .Avaliar-btn, .reveal-btn {
                 max-width: 100%;
                 margin: 3px 0;
             }
@@ -316,6 +377,8 @@
 </head>
 <body>
     <h1>Memória Geométrica 3D</h1>
+    
+    <div class="power-up-indicator" id="powerUpIndicator"></div>
     
     <div class="game-container">
         <div class="phase-indicator" id="phaseIndicator">Fase 1: 4 pares</div>
@@ -329,6 +392,7 @@
         <div class="button-container">
             <button id="newGameBtn">Novo Jogo</button>
             <button id="rankingBtn">Ranking</button>
+            <button class="reveal-btn" id="revealCardsBtn">Revelar Cartas (10s)</button>
             <a class="Avaliar-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSe1w2-QKmHarw_zLXNERODz3X1shpDnYoljxnA3a4OruX4Amg/viewform?usp=dialog">Avalie-nos</a>
         </div>
     </div>
@@ -349,7 +413,11 @@
             <h2>Fase Completa!</h2>
             <p id="phaseCompleteText">Você completou a fase com X movimentos!</p>
             <p id="bonusText">Bônus por eficiência: Y pontos</p>
-            <button id="nextPhaseBtn">Próxima Fase</button>
+            <div id="bonusCardContainer" style="display: none;">
+                <h3>Escolha uma carta de vantagem:</h3>
+                <div class="preview-cards" id="bonusCards"></div>
+            </div>
+            <button id="nextPhaseBtn" style="display: none;">Próxima Fase</button>
         </div>
     </div>
     
@@ -391,48 +459,295 @@
         </div>
     </div>
     
+    <!-- Modal de Pergunta -->
+    <div class="modal" id="questionModal">
+        <div class="modal-content">
+            <h2 id="questionTitle">Pergunta</h2>
+            <p id="questionText"></p>
+            <div id="questionOptions"></div>
+            <button id="submitAnswerBtn">Responder</button>
+        </div>
+    </div>
+    
+    <!-- Modal de Mensagem -->
+    <div class="message-modal" id="messageModal">
+        <div class="message-content">
+            <p id="messageText"></p>
+            <button id="closeMessageBtn">OK</button>
+        </div>
+    </div>
+    
     <script>
         // Dados do jogo - formas geométricas 3D e suas propriedades
         const shapesData = [
             { 
                 name: "Cubo", 
-                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjUwLDEwIDkwLDQwIDkwLDkwIDUwLDYwIDEwLDkwIDEwLDQwIiBmaWxsPSIjMzQ5OGRiIi8+PC9zdmc+",
-                properties: "6 faces, 12 arestas, 8 vértices"
+                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNMjUsMjUgTDc1LDI1IEw3NSw3NSBMMjUsNzUgWiIgZmlsbD0iIzM0OThkYiIvPjxwYXRoIGQ9Ik0yNSwyNSBMMzUsMTUgTDg1LDE1IEw3NSwyNSBaIiBmaWxsPSIjNWZhYWVmIi8+PHBhdGggZD0iTTc1LDI1IEw4NSwxNSBMODUsNjUgTDc1LDc1IFoiIGZpbGw9IiM4OWM0ZWYiLz48cGF0aCBkPSJNMjUsMjUgTDM1LDE1IEwzNSw2NSBMMjUsNzUgWiIgZmlsbD0iIzVjYjNlZSIvPjwvc3ZnPg==",
+                properties: "6 faces, 12 arestas, 8 vértices",
+                questions: [
+                    {
+                        question: "Quantas faces tem um cubo?",
+                        options: ["4 faces", "6 faces", "8 faces", "12 faces"],
+                        correctAnswer: 1
+                    },
+                    {
+                        question: "Quantas arestas tem um cubo?",
+                        options: ["6 arestas", "8 arestas", "12 arestas", "24 arestas"],
+                        correctAnswer: 2
+                    },
+                    {
+                        question: "Quantos vértices tem um cubo?",
+                        options: ["4 vértices", "6 vértices", "8 vértices", "12 vértices"],
+                        correctAnswer: 2
+                    }
+                ]
             },
             { 
                 name: "Esfera", 
-                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzM0OThkYiIvPjwvc3ZnPg==",
-                properties: "Sem faces, sem arestas, sem vértices"
+                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzM0OThkYiIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjM1IiBmaWxsPSIjNWZhYWVmIi8+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMzAiIGZpbGw9IiM4OWM0ZWYiLz48L3N2Zz4=",
+                properties: "Sem faces, sem arestas, sem vértices",
+                questions: [
+                    {
+                        question: "Uma esfera tem:",
+                        options: ["Faces e arestas", "Apenas faces", "Apenas arestas", "Nenhuma das anteriores"],
+                        correctAnswer: 3
+                    },
+                    {
+                        question: "Qual é a forma de uma bola de futebol?",
+                        options: ["Cubo", "Esfera", "Cilindro", "Pirâmide"],
+                        correctAnswer: 1
+                    },
+                    {
+                        question: "Quantas arestas tem uma esfera?",
+                        options: ["0", "1", "12", "Infinitas"],
+                        correctAnswer: 0
+                    }
+                ]
             },
             { 
                 name: "Cilindro", 
-                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB4PSIyMCIgeT0iMTAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI4MCIgZmlsbD0iIzM0OThkYiIvPjxlbGxpcHNlIGN4PSI1MCIgY3k9IjEwIiByeD0iMzAiIHJ5PSIxMCIgZmlsbD0iIzM0OThkYiIvPjxlbGxpcHNlIGN4PSI1MCIgY3k9IjkwIiByeD0iMzAiIHJ5PSIxMCIgZmlsbD0iIzM0OThkYiIvPjwvc3ZnPg==",
-                properties: "3 faces (2 círculos, 1 retângulo), 2 arestas curvas"
+                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgZmlsbD0iIzM0OThkYiIvPjxlbGxpcHNlIGN4PSI1MCIgY3k9IjIwIiByeD0iMzAiIHJ5PSIxMCIgZmlsbD0iIzM0OThkYiIvPjxlbGxpcHNlIGN4PSI1MCIgY3k9IjgwIiByeD0iMzAiIHJ5PSIxMCIgZmlsbD0iIzM0OThkYiIvPjwvc3ZnPg==",
+                properties: "3 faces (2 círculos, 1 retângulo), 2 arestas curvas",
+                questions: [
+                    {
+                        question: "Quantas faces planas tem um cilindro?",
+                        options: ["1 face", "2 faces", "3 faces", "Nenhuma"],
+                        correctAnswer: 2
+                    },
+                    {
+                        question: "Qual objeto tem forma de cilindro?",
+                        options: ["Caixa de sapato", "Lata de refrigerante", "Bola de basquete", "Dado"],
+                        correctAnswer: 1
+                    },
+                    {
+                        question: "Quantas arestas retas tem um cilindro?",
+                        options: ["0", "1", "2", "3"],
+                        correctAnswer: 0
+                    }
+                ]
             },
             { 
                 name: "Cone", 
-                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDkwLDkwIEgxMCBaIiBmaWxsPSIjMzQ5OGRiIi8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iOTAiIHJ4PSI0MCIgcnk9IjEwIiBmaWxsPSIjMzQ5OGRiIi8+PC9zdmc+",
-                properties: "2 faces (1 círculo, 1 cone), 1 aresta curva"
+                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDIwLDgwIEg4MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iODAiIHJ4PSIzMCIgcnk9IjEwIiBmaWxsPSIjMzQ5OGRiIi8+PC9zdmc+",
+                properties: "2 faces (1 círculo, 1 cone), 1 aresta curva",
+                questions: [
+                    {
+                        question: "Qual é a forma de um chapéu de festa?",
+                        options: ["Cilindro", "Cone", "Esfera", "Cubo"],
+                        correctAnswer: 1
+                    },
+                    {
+                        question: "Quantas faces tem um cone?",
+                        options: ["1 face", "2 faces", "3 faces", "4 faces"],
+                        correctAnswer: 1
+                    },
+                    {
+                        question: "Qual parte do cone é um círculo?",
+                        options: ["O vértice", "A base", "A lateral", "Todas as partes"],
+                        correctAnswer: 1
+                    }
+                ]
             },
             { 
                 name: "Pirâmide Quadrada", 
-                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjUwLDEwIDEwLDkwIDkwLDkwIiBmaWxsPSIjMzQ5OGRiIi8+PHJlY3QgeD0iMTAiIHk9IjkwIiB3aWR0aD0iODAiIGhlaWdodD0iMTAiIGZpbGw9IiMzNDk4ZGIiLz48L3N2Zz4=",
-                properties: "5 faces (1 quadrado, 4 triângulos), 8 arestas, 5 vértices"
+                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDEwLDcwIEw5MCw3MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHJlY3QgeD0iMTAiIHk9IjcwIiB3aWR0aD0iODAiIGhlaWdodD0iMTAiIGZpbGw9IiMzNDk4ZGIiLz48L3N2Zz4=",
+                properties: "5 faces (1 quadrado, 4 triângulos), 8 arestas, 5 vértices",
+                questions: [
+                    {
+                        question: "Quantas faces triangulares tem uma pirâmide quadrada?",
+                        options: ["3 faces", "4 faces", "5 faces", "6 faces"],
+                        correctAnswer: 1
+                    },
+                    {
+                        question: "Onde encontramos pirâmides famosas?",
+                        options: ["Brasil", "Egito", "China", "Índia"],
+                        correctAnswer: 1
+                    },
+                    {
+                        question: "Quantas arestas tem uma pirâmide quadrada?",
+                        options: ["4", "6", "8", "12"],
+                        correctAnswer: 2
+                    }
+                ]
             },
             { 
                 name: "Prisma Triangular", 
-                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjUwLDEwIDEwLDQwIDkwLDQwIiBmaWxsPSIjMzQ5OGRiIi8+PHBvbHlnb24gcG9pbnRzPSIxMCw0MCAxMCw5MCA1MCw2MCA5MCw5MCA5MCw0MCIgZmlsbD0iIzM0OThkYiIvPjwvc3ZnPg==",
-                properties: "5 faces (2 triângulos, 3 retângulos), 9 arestas, 6 vértices"
+                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDIwLDQwIEw4MCw0MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHBhdGggZD0iTTIwLDQwIEwxMCw3MCBMMzAsNzAgWiIgZmlsbD0iIzM0OThkYiIvPjxwYXRoIGQ9Ik04MCw0MCBMOTAsNzAgTDcwLDcwIFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNMjAsNDAgTDQwLDcwIEw2MCw3MCBMODAsNDAgWiIgZmlsbD0iIzM0OThkYiIvPjwvc3ZnPg==",
+                properties: "5 faces (2 triângulos, 3 retângulos), 9 arestas, 6 vértices",
+                questions: [
+                    {
+                        question: "Quantas faces retangulares tem um prisma triangular?",
+                        options: ["1 face", "2 faces", "3 faces", "4 faces"],
+                        correctAnswer: 2
+                    },
+                    {
+                        question: "Qual forma tem nas bases de um prisma triangular?",
+                        options: ["Quadrados", "Triângulos", "Círculos", "Retângulos"],
+                        correctAnswer: 1
+                    },
+                    {
+                        question: "Quantos vértices tem um prisma triangular?",
+                        options: ["4", "6", "8", "12"],
+                        correctAnswer: 1
+                    }
+                ]
             },
             { 
                 name: "Dodecaedro", 
-                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDMwLDQwIEw0MCw3MCBMNjAsNzAgTDcwLDQwIFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNMTAsNDAgTDMwLDQwIEw1MCw3MCBMMzAsOTAgTDEwLDYwIFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNOTAsNDAgTDcwLDQwIEw1MCw3MCBMNzAsOTAgTDkwLDYwIFoiIGZpbGw9IiMzNDk4ZGIiLz48L3N2Zz4=",
-                properties: "12 faces pentagonais, 30 arestas, 20 vértices"
+                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDM1LDMwIEw0NSw1MCBMNTUsNTAgTDY1LDMwIFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNMjAsMzAgTDM1LDMwIEw1MCw1NSBMMzUsODAgTDIwLDU1IFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNODAsMzAgTDY1LDMwIEw1MCw1NSBMNjUsODAgTDgwLDU1IFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNMzUsMzAgTDIwLDU1IEwzNSw1NSBaIiBmaWxsPSIjNWZhYWVmIi8+PHBhdGggZD0iTTY1LDMwIEw4MCw1NSBMNjUsNTUgWiIgZmlsbD0iIzVmYWFlZiIvPjxwYXRoIGQ9Ik0zNSwzMCBMNTAsNTUgTDY1LDMwIFoiIGZpbGw9IiM4OWM0ZWYiLz48L3N2Zz4=",
+                properties: "12 faces pentagonais, 30 arestas, 20 vértices",
+                questions: [
+                    {
+                        question: "Quantas faces tem um dodecaedro?",
+                        options: ["10 faces", "12 faces", "14 faces", "16 faces"],
+                        correctAnswer: 1
+                    },
+                    {
+                        question: "Qual a forma das faces de um dodecaedro regular?",
+                        options: ["Triângulos", "Quadrados", "Pentágonos", "Hexágonos"],
+                        correctAnswer: 2
+                    },
+                    {
+                        question: "Quantas arestas tem um dodecaedro?",
+                        options: ["12", "20", "30", "40"],
+                        correctAnswer: 2
+                    }
+                ]
             },
             { 
                 name: "Icosaedro", 
-                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDMwLDQwIEw3MCw0MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHBhdGggZD0iTTEwLDQwIEwzMCw3MCBMMCw3MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHBhdGggZD0iTTkwLDQwIEw3MCw3MCBMMTAwLDcwIFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNMzAsNDAgTDEwLDcwIEwzMCw3MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHBhdGggZD0iTTcwLDQwIEw5MCw3MCBMNzAsNzAgWiIgZmlsbD0iIzM0OThkYiIvPjxwYXRoIGQ9Ik0zMCw0MCBMNTAsNzAgTDcwLDQwIFoiIGZpbGw9IiMzNDk4ZGIiLz48L3N2Zz4=",
-                properties: "20 faces triangulares, 30 arestas, 12 vértices"
+                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDMwLDQwIEw3MCw0MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHBhdGggZD0iTTEwLDQwIEwyMCw3MCBMMCw3MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHBhdGggZD0iTTkwLDQwIEw4MCw3MCBMMTAwLDcwIFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNMzAsNDAgTDEwLDcwIEwzMCw3MCBaIiBmaWxsPSIjNWZhYWVmIi8+PHBhdGggZD0iTTcwLDQwIEw5MCw3MCBMNzAsNzAgWiIgZmlsbD0iIzVmYWFlZiIvPjxwYXRoIGQ9Ik0zMCw0MCBMNTAsNzAgTDcwLDQwIFoiIGZpbGw9IiM4OWM0ZWYiLz48L3N2Zz4=",
+                properties: "20 faces triangulares, 30 arestas, 12 vértices",
+                questions: [
+                    {
+                        question: "Quantas faces tem um icosaedro?",
+                        options: ["12 faces", "16 faces", "20 faces", "24 faces"],
+                        correctAnswer: 2
+                    },
+                    {
+                        question: "Qual a forma das faces de um icosaedro regular?",
+                        options: ["Triângulos", "Quadrados", "Pentágonos", "Hexágonos"],
+                        correctAnswer: 0
+                    },
+                    {
+                        question: "Quantos vértices tem um icosaedro?",
+                        options: ["8", "12", "20", "30"],
+                        correctAnswer: 1
+                    }
+                ]
+            }
+        ];
+        
+        // Cartas de vantagem
+        const bonusCards = [
+            {
+                type: "points",
+                title: "Bônus de Pontos",
+                description: "Ganhe pontos extras!",
+                effect: () => {
+                    const bonus = Math.floor(Math.random() * 401) + 100; // 100-500 pontos
+                    score += bonus;
+                    updateScore();
+                    return `Você ganhou ${bonus} pontos extras!`;
+                }
+            },
+            {
+                type: "double",
+                title: "Pontos Duplicados",
+                description: "Próxima fase vale o dobro!",
+                effect: () => {
+                    showPowerUp("Próxima fase: Pontos Duplicados!");
+                    return "Na próxima fase, todos os pontos serão multiplicados por 2!";
+                }
+            },
+            {
+                type: "reveal",
+                title: "Revelar Cartas",
+                description: "Ative para ver todas as cartas por 10s!",
+                effect: () => {
+                    // Armazena o power-up para ser usado depois
+                    hasRevealPowerUp = true;
+                    document.getElementById('revealCardsBtn').style.display = 'inline-block';
+                    return "Você ganhou o poder de revelar as cartas! Use o botão 'Revelar Cartas' quando quiser.";
+                }
+            }
+        ];
+        
+        // Cartas de penalidade
+        const penaltyCards = [
+            {
+                type: "shuffle",
+                title: "Embaralhar",
+                description: "Todas as cartas serão embaralhadas!",
+                effect: () => {
+                    // Embaralhar as cartas não correspondidas
+                    const unmatchedCards = cards.filter(card => !card.matched);
+                    const unmatchedIndices = cards.map((card, index) => card.matched ? null : index).filter(val => val !== null);
+                    
+                    // Embaralhar os índices
+                    const shuffledIndices = [...unmatchedIndices].sort(() => Math.random() - 0.5);
+                    
+                    // Reorganizar as cartas no DOM
+                    const cardElements = Array.from(gameBoard.children);
+                    const newOrder = [];
+                    
+                    cards.forEach((card, index) => {
+                        if (card.matched) {
+                            newOrder.push(cardElements[index]);
+                        } else {
+                            const newIndex = shuffledIndices[unmatchedIndices.indexOf(index)];
+                            newOrder.push(cardElements[newIndex]);
+                        }
+                    });
+                    
+                    // Limpar e re-adicionar na nova ordem
+                    gameBoard.innerHTML = '';
+                    newOrder.forEach(card => gameBoard.appendChild(card));
+                    
+                    return "As cartas foram embaralhadas!";
+                }
+            },
+            {
+                type: "losePoints",
+                title: "Perder Pontos",
+                description: "Você perderá metade dos pontos desta fase!",
+                effect: () => {
+                    const phaseScore = calculatePhaseScore();
+                    const penalty = Math.floor(phaseScore / 2);
+                    score -= penalty;
+                    updateScore();
+                    return `Você perdeu ${penalty} pontos!`;
+                }
+            },
+            {
+                type: "hideNames",
+                title: "Nomes Ocultos",
+                description: "As cartas de texto não mostrarão os nomes!",
+                effect: () => {
+                    // Na próxima fase, as cartas de texto não mostrarão os nomes
+                    hideShapeNames = true;
+                    return "Na próxima fase, as cartas de texto não mostrarão os nomes das formas!";
+                }
             }
         ];
         
@@ -446,6 +761,9 @@
         let gameActive = false;
         let phaseActive = false;
         let countdownInterval;
+        let doublePoints = false;
+        let hideShapeNames = false;
+        let hasRevealPowerUp = false;
         
         // Elementos do DOM
         const gameBoard = document.getElementById('gameBoard');
@@ -458,6 +776,8 @@
         const phaseCompleteModal = document.getElementById('phaseCompleteModal');
         const phaseCompleteText = document.getElementById('phaseCompleteText');
         const bonusText = document.getElementById('bonusText');
+        const bonusCardContainer = document.getElementById('bonusCardContainer');
+        const bonusCardsElement = document.getElementById('bonusCards');
         const nextPhaseBtn = document.getElementById('nextPhaseBtn');
         const gameCompleteModal = document.getElementById('gameCompleteModal');
         const finalScoreText = document.getElementById('finalScoreText');
@@ -470,11 +790,25 @@
         const closeRankingBtn = document.getElementById('closeRankingBtn');
         const newGameBtn = document.getElementById('newGameBtn');
         const rankingBtn = document.getElementById('rankingBtn');
+        const questionModal = document.getElementById('questionModal');
+        const questionTitle = document.getElementById('questionTitle');
+        const questionText = document.getElementById('questionText');
+        const questionOptions = document.getElementById('questionOptions');
+        const submitAnswerBtn = document.getElementById('submitAnswerBtn');
+        const powerUpIndicator = document.getElementById('powerUpIndicator');
+        const revealCardsBtn = document.getElementById('revealCardsBtn');
+        const messageModal = document.getElementById('messageModal');
+        const messageText = document.getElementById('messageText');
+        const closeMessageBtn = document.getElementById('closeMessageBtn');
         
         // Inicializar o jogo
         function initGame() {
             currentPhase = 1;
             score = 0;
+            doublePoints = false;
+            hideShapeNames = false;
+            hasRevealPowerUp = false;
+            revealCardsBtn.style.display = 'none';
             updateScore();
             startPhase();
         }
@@ -528,9 +862,14 @@
                 });
                 
                 // Carta com propriedades
+                let textContent = shape.properties;
+                if (!hideShapeNames) {
+                    textContent = `${shape.name}\n\n${shape.properties}`;
+                }
+                
                 cardPairs.push({
                     type: 'text',
-                    content: `${shape.name}\n\n${shape.properties}`,
+                    content: textContent,
                     shape: shape.name,
                     matched: false
                 });
@@ -559,10 +898,12 @@
                     img.loading = 'lazy';
                     cardFront.appendChild(img);
                     
-                    const shapeName = document.createElement('div');
-                    shapeName.className = 'card-text';
-                    shapeName.textContent = card.shape;
-                    cardFront.appendChild(shapeName);
+                    if (!hideShapeNames) {
+                        const shapeName = document.createElement('div');
+                        shapeName.className = 'card-text';
+                        shapeName.textContent = card.shape;
+                        cardFront.appendChild(shapeName);
+                    }
                 } else {
                     const text = document.createElement('div');
                     text.className = 'card-text';
@@ -679,8 +1020,9 @@
                 
                 matchedPairs++;
                 
-                // Verificar se completou a fase
-                if (matchedPairs === (flippedCards.length / 2)) {
+                // Verificar se completou a fase (todos os pares encontrados)
+                const totalPairs = cards.length / 2;
+                if (matchedPairs === totalPairs) {
                     setTimeout(() => {
                         completePhase();
                     }, 500);
@@ -702,7 +1044,15 @@
             phaseActive = false;
             
             // Calcular pontuação da fase
-            const phaseScore = calculatePhaseScore();
+            let phaseScore = calculatePhaseScore();
+            
+            // Aplicar bônus de pontos duplicados
+            if (doublePoints) {
+                phaseScore *= 2;
+                doublePoints = false;
+                hidePowerUp();
+            }
+            
             score += phaseScore;
             updateScore();
             
@@ -711,12 +1061,164 @@
             bonusText.textContent = `Bônus por eficiência: ${phaseScore - (100 * currentPhase)} pontos`;
             
             if (currentPhase < 3) {
-                nextPhaseBtn.style.display = 'block';
-                phaseCompleteModal.style.display = 'flex';
+                // Mostrar cartas de vantagem
+                showBonusCards();
             } else {
                 // Jogo completo
                 gameComplete();
             }
+        }
+        
+        // Mostrar cartas de vantagem
+        function showBonusCards() {
+            bonusCardContainer.style.display = 'block';
+            bonusCardsElement.innerHTML = '';
+            nextPhaseBtn.style.display = 'none';
+            
+            // Selecionar 3 cartas de vantagem aleatórias
+            const shuffledBonuses = [...bonusCards].sort(() => 0.5 - Math.random()).slice(0, 3);
+            
+            shuffledBonuses.forEach((bonus, index) => {
+                const bonusCard = document.createElement('div');
+                bonusCard.className = 'preview-card';
+                bonusCard.dataset.index = index;
+                
+                const title = document.createElement('div');
+                title.className = 'card-text';
+                title.textContent = bonus.title;
+                bonusCard.appendChild(title);
+                
+                const desc = document.createElement('div');
+                desc.className = 'card-text';
+                desc.style.fontSize = '0.6rem';
+                desc.textContent = bonus.description;
+                bonusCard.appendChild(desc);
+                
+                bonusCard.addEventListener('click', () => selectBonusCard(index, shuffledBonuses));
+                bonusCardsElement.appendChild(bonusCard);
+            });
+            
+            phaseCompleteModal.style.display = 'flex';
+        }
+        
+        // Selecionar carta de vantagem
+        function selectBonusCard(index, bonuses) {
+            const selectedBonus = bonuses[index];
+            const result = selectedBonus.effect();
+            
+            // Mostrar resultado e perguntar se quer continuar
+            bonusText.textContent = result;
+            bonusCardContainer.style.display = 'none';
+            nextPhaseBtn.style.display = 'block';
+            
+            // Selecionar uma pergunta aleatória para testar o jogador
+            const allQuestions = [];
+            shapesData.forEach(shape => {
+                if (shape.questions && shape.questions.length > 0) {
+                    allQuestions.push(...shape.questions);
+                }
+            });
+            
+            if (allQuestions.length > 0) {
+                const randomQuestion = allQuestions[Math.floor(Math.random() * allQuestions.length)];
+                askQuestion(randomQuestion);
+            }
+        }
+        
+        // Perguntar ao jogador
+        function askQuestion(questionData) {
+            questionTitle.textContent = "Pergunta Bônus";
+            questionText.textContent = questionData.question;
+            questionOptions.innerHTML = '';
+            
+            questionData.options.forEach((option, index) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.style.margin = '5px 0';
+                
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'questionOption';
+                radio.value = index;
+                radio.id = `option${index}`;
+                
+                const label = document.createElement('label');
+                label.htmlFor = `option${index}`;
+                label.textContent = option;
+                label.style.marginLeft = '5px';
+                
+                optionDiv.appendChild(radio);
+                optionDiv.appendChild(label);
+                questionOptions.appendChild(optionDiv);
+            });
+            
+            questionModal.style.display = 'flex';
+            phaseCompleteModal.style.display = 'none';
+            
+            submitAnswerBtn.onclick = () => checkAnswer(questionData);
+        }
+        
+        // Verificar resposta
+        function checkAnswer(questionData) {
+            const selectedOption = document.querySelector('input[name="questionOption"]:checked');
+            
+            if (!selectedOption) {
+                showMessage("Por favor, selecione uma resposta!");
+                return;
+            }
+            
+            const answerIndex = parseInt(selectedOption.value);
+            questionModal.style.display = 'none';
+            
+            if (answerIndex === questionData.correctAnswer) {
+                // Resposta correta - aplicar vantagem
+                const randomBonus = bonusCards[Math.floor(Math.random() * bonusCards.length)];
+                const result = randomBonus.effect();
+                showMessage(`Resposta correta! ${result}`);
+            } else {
+                // Resposta errada - aplicar penalidade
+                const randomPenalty = penaltyCards[Math.floor(Math.random() * penaltyCards.length)];
+                const result = randomPenalty.effect();
+                showMessage(`Resposta incorreta! ${result}`);
+            }
+            
+            phaseCompleteModal.style.display = 'flex';
+        }
+        
+        // Mostrar mensagem
+        function showMessage(text) {
+            messageText.textContent = text;
+            messageModal.style.display = 'flex';
+        }
+        
+        // Revelar cartas por 10 segundos
+        function revealCards() {
+            if (!hasRevealPowerUp || !phaseActive) return;
+            
+            // Revelar todas as cartas não correspondidas
+            cards.forEach((card, index) => {
+                if (!card.matched) {
+                    gameBoard.children[index].classList.add('flipped');
+                }
+            });
+            
+            // Desativar o botão temporariamente
+            revealCardsBtn.disabled = true;
+            
+            // Esconder depois de 10 segundos
+            setTimeout(() => {
+                cards.forEach((card, index) => {
+                    if (!card.matched) {
+                        gameBoard.children[index].classList.remove('flipped');
+                    }
+                });
+                
+                // Reativar o botão se ainda houver power-up
+                revealCardsBtn.disabled = !hasRevealPowerUp;
+            }, 10000);
+            
+            // Consumir o power-up
+            hasRevealPowerUp = false;
+            revealCardsBtn.style.display = 'none';
         }
         
         // Calcular pontuação da fase
@@ -751,6 +1253,21 @@
             newHighScore.style.display = isNewHighScore ? 'block' : 'none';
             
             gameCompleteModal.style.display = 'flex';
+        }
+        
+        // Mostrar power-up ativo
+        function showPowerUp(text) {
+            powerUpIndicator.textContent = text;
+            powerUpIndicator.style.display = 'block';
+            
+            if (text.includes("Duplicados")) {
+                doublePoints = true;
+            }
+        }
+        
+        // Esconder power-up
+        function hidePowerUp() {
+            powerUpIndicator.style.display = 'none';
         }
         
         // Atualizar contador de movimentos
@@ -843,6 +1360,12 @@
         });
         
         newGameBtn.addEventListener('click', initGame);
+        
+        revealCardsBtn.addEventListener('click', revealCards);
+        
+        closeMessageBtn.addEventListener('click', () => {
+            messageModal.style.display = 'none';
+        });
         
         // Iniciar o jogo quando a página carregar
         window.addEventListener('DOMContentLoaded', () => {
