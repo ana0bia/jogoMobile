@@ -570,7 +570,7 @@
             },
             { 
                 name: "Pirâmide Quadrada", 
-                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDEwLDcwIEw5MCw3MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHJlY3QgeD0iMTAiIHk9IjcwIiB3aWR0aD0iODAiIGhlaWdodD0iMTAiIGZpbGw9IiMzNDk4ZGIiLz48L3N2Zz4=",
+                image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMj000MC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDEwLDcwIEw5MCw3MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHJlY3QgeD0iMTAiIHk9IjcwIiB3aWR0aD0iODAiIGhlaWdodD0iMTAiIGZpbGw9IiMzNDk4ZGIiLz48L3N2Zz4=",
                 properties: "5 faces (1 quadrado, 4 triângulos), 8 arestas, 5 vértices",
                 questions: [
                     {
@@ -697,7 +697,7 @@
         const penaltyCards = [
             {
                 type: "shuffle",
-                title: "Embaralhar",
+                title: "Embaralhar Cartas",
                 description: "Todas as cartas serão embaralhadas!",
                 effect: () => {
                     // Embaralhar as cartas não correspondidas
@@ -730,19 +730,18 @@
             {
                 type: "losePoints",
                 title: "Perder Pontos",
-                description: "Você perderá metade dos pontos desta fase!",
+                description: "Você perderá os pontos ganhos nesta fase!",
                 effect: () => {
                     const phaseScore = calculatePhaseScore();
-                    const penalty = Math.floor(phaseScore / 2);
-                    score -= penalty;
+                    score -= phaseScore;
                     updateScore();
-                    return `Você perdeu ${penalty} pontos!`;
+                    return `Você perdeu ${phaseScore} pontos desta fase!`;
                 }
             },
             {
                 type: "hideNames",
                 title: "Nomes Ocultos",
-                description: "As cartas de texto não mostrarão os nomes!",
+                description: "As cartas ficarão sem os nomes dos sólidos!",
                 effect: () => {
                     // Na próxima fase, as cartas de texto não mostrarão os nomes
                     hideShapeNames = true;
@@ -764,6 +763,7 @@
         let doublePoints = false;
         let hideShapeNames = false;
         let hasRevealPowerUp = false;
+        let hasChosenBonus = false;
         
         // Elementos do DOM
         const gameBoard = document.getElementById('gameBoard');
@@ -808,6 +808,7 @@
             doublePoints = false;
             hideShapeNames = false;
             hasRevealPowerUp = false;
+            hasChosenBonus = false;
             revealCardsBtn.style.display = 'none';
             updateScore();
             startPhase();
@@ -1061,8 +1062,15 @@
             bonusText.textContent = `Bônus por eficiência: ${phaseScore - (100 * currentPhase)} pontos`;
             
             if (currentPhase < 3) {
-                // Mostrar cartas de vantagem
-                showBonusCards();
+                // Mostrar cartas de vantagem apenas se o jogador ainda não escolheu uma
+                if (!hasChosenBonus) {
+                    showBonusCards();
+                } else {
+                    // Se já escolheu um bônus, apenas avançar para próxima fase
+                    nextPhaseBtn.style.display = 'block';
+                    bonusCardContainer.style.display = 'none';
+                    phaseCompleteModal.style.display = 'flex';
+                }
             } else {
                 // Jogo completo
                 gameComplete();
@@ -1104,12 +1112,13 @@
         // Selecionar carta de vantagem
         function selectBonusCard(index, bonuses) {
             const selectedBonus = bonuses[index];
-            const result = selectedBonus.effect();
+            
+            // Marcar que o jogador já escolheu um bônus
+            hasChosenBonus = true;
             
             // Mostrar resultado e perguntar se quer continuar
-            bonusText.textContent = result;
+            bonusText.textContent = "Responda corretamente para ganhar o bônus!";
             bonusCardContainer.style.display = 'none';
-            nextPhaseBtn.style.display = 'block';
             
             // Selecionar uma pergunta aleatória para testar o jogador
             const allQuestions = [];
@@ -1121,12 +1130,12 @@
             
             if (allQuestions.length > 0) {
                 const randomQuestion = allQuestions[Math.floor(Math.random() * allQuestions.length)];
-                askQuestion(randomQuestion);
+                askQuestion(randomQuestion, selectedBonus);
             }
         }
         
         // Perguntar ao jogador
-        function askQuestion(questionData) {
+        function askQuestion(questionData, bonusCard) {
             questionTitle.textContent = "Pergunta Bônus";
             questionText.textContent = questionData.question;
             questionOptions.innerHTML = '';
@@ -1154,11 +1163,11 @@
             questionModal.style.display = 'flex';
             phaseCompleteModal.style.display = 'none';
             
-            submitAnswerBtn.onclick = () => checkAnswer(questionData);
+            submitAnswerBtn.onclick = () => checkAnswer(questionData, bonusCard);
         }
         
         // Verificar resposta
-        function checkAnswer(questionData) {
+        function checkAnswer(questionData, bonusCard) {
             const selectedOption = document.querySelector('input[name="questionOption"]:checked');
             
             if (!selectedOption) {
@@ -1171,16 +1180,17 @@
             
             if (answerIndex === questionData.correctAnswer) {
                 // Resposta correta - aplicar vantagem
-                const randomBonus = bonusCards[Math.floor(Math.random() * bonusCards.length)];
-                const result = randomBonus.effect();
+                const result = bonusCard.effect();
                 showMessage(`Resposta correta! ${result}`);
             } else {
-                // Resposta errada - aplicar penalidade
+                // Resposta errada - aplicar penalidade aleatória
                 const randomPenalty = penaltyCards[Math.floor(Math.random() * penaltyCards.length)];
-                const result = randomPenalty.effect();
-                showMessage(`Resposta incorreta! ${result}`);
+                const penaltyResult = randomPenalty.effect();
+                showMessage(`Resposta incorreta! ${penaltyResult}`);
             }
             
+            // Mostrar botão para próxima fase
+            nextPhaseBtn.style.display = 'block';
             phaseCompleteModal.style.display = 'flex';
         }
         
