@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Memória Geométrica 3D</title>
+    <!-- Adicione os scripts do Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -357,6 +360,22 @@
             text-align: center;
         }
         
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3498db;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         /* Ajustes para telas muito pequenas */
         @media (max-width: 350px) {
             .game-board {
@@ -443,12 +462,18 @@
     <div class="modal" id="rankingModal">
         <div class="modal-content">
             <h2>Ranking</h2>
+            <div id="rankingTabs" style="margin-bottom: 15px;">
+                <button id="localRankingTab" class="ranking-tab active">Local</button>
+                <button id="globalRankingTab" class="ranking-tab">Global</button>
+            </div>
+            <div id="rankingLoading" class="spinner" style="display: none;"></div>
             <table class="ranking-table" id="rankingTable">
                 <thead>
                     <tr>
                         <th>Posição</th>
                         <th>Nome</th>
                         <th>Pontuação</th>
+                        <th>Data</th>
                     </tr>
                 </thead>
                 <tbody id="rankingBody">
@@ -478,6 +503,21 @@
     </div>
     
     <script>
+        // Configuração do Firebase (substitua com suas credenciais)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDEXAMPLEEXAMPLEEXAMPLE",
+            authDomain: "geometry-memory-game.firebaseapp.com",
+            databaseURL: "https://geometry-memory-game.firebaseio.com",
+            projectId: "geometry-memory-game",
+            storageBucket: "geometry-memory-game.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abc123def456ghi789jkl0"
+        };
+
+        // Inicialize o Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
         // Dados do jogo - formas geométricas 3D e suas propriedades
         const shapesData = [
             { 
@@ -764,6 +804,7 @@
         let hideShapeNames = false;
         let hasRevealPowerUp = false;
         let hasChosenBonus = false;
+        let currentRankingTab = 'local';
         
         // Elementos do DOM
         const gameBoard = document.getElementById('gameBoard');
@@ -800,6 +841,9 @@
         const messageModal = document.getElementById('messageModal');
         const messageText = document.getElementById('messageText');
         const closeMessageBtn = document.getElementById('closeMessageBtn');
+        const localRankingTab = document.getElementById('localRankingTab');
+        const globalRankingTab = document.getElementById('globalRankingTab');
+        const rankingLoading = document.getElementById('rankingLoading');
         
         // Inicializar o jogo
         function initGame() {
@@ -1290,15 +1334,15 @@
             scoreDisplay.textContent = `Pontuação: ${score}`;
         }
         
-        // Manipulação do ranking
+        // Manipulação do ranking local
         function getRanking() {
             const rankingJSON = localStorage.getItem('geometryMemoryRanking');
             return rankingJSON ? JSON.parse(rankingJSON) : [];
         }
         
-        function saveToRanking(name, score) {
+        function saveToLocalRanking(name, score) {
             const ranking = getRanking();
-            ranking.push({ name, score });
+            ranking.push({ name, score, timestamp: Date.now() });
             
             // Ordenar por pontuação (maior primeiro)
             ranking.sort((a, b) => b.score - a.score);
@@ -1311,27 +1355,107 @@
             localStorage.setItem('geometryMemoryRanking', JSON.stringify(ranking));
         }
         
-        function showRanking() {
-            const ranking = getRanking();
+        // Manipulação do ranking global (Firebase)
+        async function saveToGlobalRanking(name, score) {
+            try {
+                await database.ref('scores').push({
+                    name: name,
+                    score: score,
+                    timestamp: Date.now()
+                });
+                return true;
+            } catch (error) {
+                console.error("Erro ao salvar no ranking global:", error);
+                return false;
+            }
+        }
+        
+        async function getGlobalRanking() {
+            try {
+                const snapshot = await database.ref('scores').orderByChild('score').limitToLast(10).once('value');
+                const scores = [];
+                
+                snapshot.forEach((childSnapshot) => {
+                    scores.push(childSnapshot.val());
+                });
+                
+                // Ordenar do maior para o menor
+                scores.sort((a, b) => b.score - a.score);
+                return scores;
+            } catch (error) {
+                console.error("Erro ao obter ranking global:", error);
+                return [];
+            }
+        }
+        
+        // Mostrar ranking
+        async function showRanking(tab = 'local') {
+            currentRankingTab = tab;
             rankingBody.innerHTML = '';
+            rankingLoading.style.display = 'block';
+            
+            // Atualizar tabs ativas
+            localRankingTab.classList.remove('active');
+            globalRankingTab.classList.remove('active');
+            
+            if (tab === 'local') {
+                localRankingTab.classList.add('active');
+                showLocalRanking();
+            } else {
+                globalRankingTab.classList.add('active');
+                await showGlobalRanking();
+            }
+            
+            rankingLoading.style.display = 'none';
+            rankingModal.style.display = 'flex';
+        }
+        
+        function showLocalRanking() {
+            const ranking = getRanking();
             
             if (ranking.length === 0) {
                 const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="3">Nenhuma pontuação registrada ainda</td>';
+                row.innerHTML = '<td colspan="4">Nenhuma pontuação local registrada</td>';
                 rankingBody.appendChild(row);
             } else {
                 ranking.forEach((entry, index) => {
                     const row = document.createElement('tr');
+                    const date = new Date(entry.timestamp);
+                    const dateStr = date.toLocaleDateString();
+                    
                     row.innerHTML = `
                         <td>${index + 1}</td>
                         <td>${entry.name}</td>
                         <td>${entry.score}</td>
+                        <td>${dateStr}</td>
                     `;
                     rankingBody.appendChild(row);
                 });
             }
+        }
+        
+        async function showGlobalRanking() {
+            const ranking = await getGlobalRanking();
             
-            rankingModal.style.display = 'flex';
+            if (ranking.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="4">Nenhuma pontuação global registrada</td>';
+                rankingBody.appendChild(row);
+            } else {
+                ranking.forEach((entry, index) => {
+                    const row = document.createElement('tr');
+                    const date = new Date(entry.timestamp);
+                    const dateStr = date.toLocaleDateString();
+                    
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${entry.name}</td>
+                        <td>${entry.score}</td>
+                        <td>${dateStr}</td>
+                    `;
+                    rankingBody.appendChild(row);
+                });
+            }
         }
         
         // Event Listeners
@@ -1354,16 +1478,28 @@
             startPhase();
         });
         
-        saveScoreBtn.addEventListener('click', () => {
+        saveScoreBtn.addEventListener('click', async () => {
             const playerName = document.getElementById('playerName').value.trim();
             if (playerName) {
-                saveToRanking(playerName, score);
+                saveToLocalRanking(playerName, score);
+                
+                // Tentar salvar no ranking global
+                const saved = await saveToGlobalRanking(playerName, score);
+                if (saved) {
+                    showMessage("Pontuação salva com sucesso no ranking local e global!");
+                } else {
+                    showMessage("Pontuação salva no ranking local. Falha ao conectar com o ranking global.");
+                }
+                
                 newHighScore.style.display = 'none';
-                showRanking();
+                showRanking('global');
             }
         });
         
-        rankingBtn.addEventListener('click', showRanking);
+        rankingBtn.addEventListener('click', () => showRanking('local'));
+        
+        localRankingTab.addEventListener('click', () => showRanking('local'));
+        globalRankingTab.addEventListener('click', () => showRanking('global'));
         
         closeRankingBtn.addEventListener('click', () => {
             rankingModal.style.display = 'none';
@@ -1376,6 +1512,25 @@
         closeMessageBtn.addEventListener('click', () => {
             messageModal.style.display = 'none';
         });
+
+        // Estilos para as abas do ranking
+        const style = document.createElement('style');
+        style.textContent = `
+            .ranking-tab {
+                padding: 8px 15px;
+                margin: 0 5px;
+                border: none;
+                background-color: #ddd;
+                cursor: pointer;
+                border-radius: 5px 5px 0 0;
+                font-weight: bold;
+            }
+            .ranking-tab.active {
+                background-color: #3498db;
+                color: white;
+            }
+        `;
+        document.head.appendChild(style);
         
         // Iniciar o jogo quando a página carregar
         window.addEventListener('DOMContentLoaded', () => {
