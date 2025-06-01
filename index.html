@@ -4,9 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Memória Geométrica 3D</title>
-    <!-- Adicione os scripts do Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, set, orderByChild, limitToLast, query, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDW2w8SG2zuSyoeBQS9NfLnMeK33TD7Lds",
+            authDomain: "memoriagame-d6ec3.firebaseapp.com",
+            projectId: "memoriagame-d6ec3",
+            storageBucket: "memoriagame-d6ec3.appspot.com",
+            messagingSenderId: "28476520800",
+            appId: "1:28476520800:web:c0ac6938ea6375498e0605",
+            measurementId: "G-M08FFYRYZX"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        
+        // Make Firebase available globally
+        window.firebase = {
+            database,
+            ref,
+            push,
+            set,
+            orderByChild,
+            limitToLast,
+            query,
+            onValue
+        };
+    </script>
     <style>
         * {
             box-sizing: border-box;
@@ -33,6 +61,54 @@
             font-size: 1.5rem;
             text-align: center;
             padding: 0 10px;
+        }
+        
+        /* Tela de Início */
+        .start-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+            height: 100vh;
+            background-color: #f0f8ff;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+        
+        .start-screen h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        
+        .start-screen p {
+            margin-bottom: 30px;
+            max-width: 500px;
+        }
+        
+        .start-screen img {
+            max-width: 200px;
+            margin-bottom: 30px;
+        }
+        
+        .start-btn {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .start-btn:hover {
+            background-color: #27ae60;
         }
         
         .game-container {
@@ -330,7 +406,7 @@
             max-width: 45%;
             text-decoration: none;
             text-align: center;
-            display: none; /* Inicialmente escondido */
+            display: none;
         }
         
         .reveal-btn:hover {
@@ -454,11 +530,28 @@
             max-width: 100%;
             height: auto;
             margin: 5px 0;
+            border-radius: 5px;
         }
         
         .learning-card p {
             font-size: 0.8rem;
             line-height: 1.4;
+            margin-bottom: 5px;
+        }
+        
+        .learning-card .properties {
+            font-weight: bold;
+            color: #2c3e50;
+            background-color: #e8f4fc;
+            padding: 5px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        
+        .learning-card .examples {
+            font-style: italic;
+            color: #7f8c8d;
+            font-size: 0.75rem;
         }
         
         /* Ajustes para telas muito pequenas */
@@ -484,6 +577,14 @@
     </style>
 </head>
 <body>
+    <!-- Tela de Início -->
+    <div class="start-screen" id="startScreen">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNMjUsMjUgTDc1LDI1IEw3NSw3NSBMMjUsNzUgWiIgZmlsbD0iIzM0OThkYiIvPjxwYXRoIGQ9Ik0yNSwyNSBMMzUsMTUgTDg1LDE1IEw3NSwyNSBaIiBmaWxsPSIjNWZhYWVmIi8+PHBhdGggZD0iTTc1LDI1IEw4NSwxNSBMODUsNjUgTDc1LDc1IFoiIGZpbGw9IiM4OWM0ZWYiLz48cGF0aCBkPSJNMjUsMjUgTDM1LDE1IEwzNSw2NSBMMjUsNzUgWiIgZmlsbD0iIzVjYjNlZSIvPjwvc3ZnPg==" alt="Memória Geométrica 3D">
+        <h2>Memória Geométrica 3D</h2>
+        <p>Combine formas geométricas com suas propriedades e aprenda geometria de forma divertida!</p>
+        <button class="start-btn" id="startGameBtn">Começar Jogo</button>
+    </div>
+    
     <div class="menu-btn" id="menuBtn">
         <div class="menu-line"></div>
         <div class="menu-line"></div>
@@ -548,7 +649,10 @@
             <div id="newHighScore" style="display: none;">
                 <p>Novo recorde! Digite seu nome:</p>
                 <input type="text" id="playerName" maxlength="20" placeholder="Seu nome">
-                <button id="saveScoreBtn">Salvar Pontuação</button>
+                <div class="button-container">
+                    <button id="saveScoreBtn">Salvar Pontuação</button>
+                    <button id="viewRankingBtn">Ver Ranking</button>
+                </div>
             </div>
             <div class="button-container">
                 <button id="playAgainBtn">Jogar Novamente</button>
@@ -603,21 +707,6 @@
     </div>
     
     <script>
-        // Configuração do Firebase (substitua com suas credenciais)
-        const firebaseConfig = {
-            apiKey: "AIzaSyDEXAMPLEEXAMPLEEXAMPLE",
-            authDomain: "geometry-memory-game.firebaseapp.com",
-            databaseURL: "https://geometry-memory-game.firebaseio.com",
-            projectId: "geometry-memory-game",
-            storageBucket: "geometry-memory-game.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abc123def456ghi789jkl0"
-        };
-
-        // Inicialize o Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        
         // Dados do jogo - formas geométricas 3D e suas propriedades
         const shapesData = [
             { 
@@ -625,6 +714,7 @@
                 image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNMjUsMjUgTDc1LDI1IEw3NSw3NSBMMjUsNzUgWiIgZmlsbD0iIzM0OThkYiIvPjxwYXRoIGQ9Ik0yNSwyNSBMMzUsMTUgTDg1LDE1IEw3NSwyNSBaIiBmaWxsPSIjNWZhYWVmIi8+PHBhdGggZD0iTTc1LDI1IEw4NSwxNSBMODUsNjUgTDc1LDc1IFoiIGZpbGw9IiM4OWM0ZWYiLz48cGF0aCBkPSJNMjUsMjUgTDM1LDE1IEwzNSw2NSBMMjUsNzUgWiIgZmlsbD0iIzVjYjNlZSIvPjwvc3ZnPg==",
                 properties: "6 faces, 12 arestas, 8 vértices",
                 description: "O cubo é um sólido geométrico com seis faces quadradas iguais. Todas as arestas têm o mesmo comprimento e todos os ângulos são retos. É um dos cinco sólidos platônicos.",
+                examples: "Exemplos: dado, cubo mágico, caixa cúbica.",
                 questions: [
                     {
                         question: "Quantas faces tem um cubo?",
@@ -647,7 +737,8 @@
                 name: "Esfera", 
                 image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzM0OThkYiIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjM1IiBmaWxsPSIjNWZhYWVmIi8+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMzAiIGZpbGw9IiM4OWM0ZWYiLz48L3N2Zz4=",
                 properties: "Sem faces, sem arestas, sem vértices",
-                description: "A esfera é uma superfície perfeitamente redonda onde todos os pontos estão à mesma distância do centro. Não possui faces, arestas ou vértices. Exemplos incluem bolas de futebol e planetas.",
+                description: "A esfera é uma superfície perfeitamente redonda onde todos os pontos estão à mesma distância do centro. Não possui faces, arestas ou vértices.",
+                examples: "Exemplos: bola de futebol, planeta Terra, bolas de gude.",
                 questions: [
                     {
                         question: "Uma esfera tem:",
@@ -670,7 +761,8 @@
                 name: "Cilindro", 
                 image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgZmlsbD0iIzM0OThkYiIvPjxlbGxpcHNlIGN4PSI1MCIgY3k9IjIwIiByeD0iMzAiIHJ5PSIxMCIgZmlsbD0iIzM0OThkYiIvPjxlbGxpcHNlIGN4PSI1MCIgY3k9IjgwIiByeD0iMzAiIHJ5PSIxMCIgZmlsbD0iIzM0OThkYiIvPjwvc3ZnPg==",
                 properties: "3 faces (2 círculos, 1 retângulo), 2 arestas curvas",
-                description: "O cilindro possui duas bases circulares paralelas e uma superfície lateral curva. Quando desenrolada, a superfície lateral forma um retângulo. Exemplos incluem latas de refrigerante e rolos de papel.",
+                description: "O cilindro possui duas bases circulares paralelas e uma superfície lateral curva. Quando desenrolada, a superfície lateral forma um retângulo.",
+                examples: "Exemplos: lata de refrigerante, rolo de papel higiênico, cano.",
                 questions: [
                     {
                         question: "Quantas faces planas tem um cilindro?",
@@ -693,7 +785,8 @@
                 name: "Cone", 
                 image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDIwLDgwIEg4MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iODAiIHJ4PSIzMCIgcnk9IjEwIiBmaWxsPSIjMzQ5OGRiIi8+PC9zdmc+",
                 properties: "2 faces (1 círculo, 1 cone), 1 aresta curva",
-                description: "O cone possui uma base circular e um vértice (ponto) oposto à base. A superfície lateral é curva e inclinada. Exemplos incluem chapéus de festa e cones de trânsito.",
+                description: "O cone possui uma base circular e um vértice (ponto) oposto à base. A superfície lateral é curva e inclinada.",
+                examples: "Exemplos: chapéu de festa, cone de trânsito, casquinha de sorvete.",
                 questions: [
                     {
                         question: "Qual é a forma de um chapéu de festa?",
@@ -716,7 +809,8 @@
                 name: "Pirâmide Quadrada", 
                 image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDEwLDcwIEw5MCw3MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHJlY3QgeD0iMTAiIHk9IjcwIiB3aWR0aD0iODAiIGhlaWdodD0iMTAiIGZpbGw9IiMzNDk4ZGIiLz48L3N2Zz4=",
                 properties: "5 faces (1 quadrado, 4 triângulos), 8 arestas, 5 vértices",
-                description: "A pirâmide quadrada possui uma base quadrada e quatro faces triangulares que se encontram em um vértice comum. As pirâmides do Egito são exemplos famosos deste sólido.",
+                description: "A pirâmide quadrada possui uma base quadrada e quatro faces triangulares que se encontram em um vértice comum.",
+                examples: "Exemplos: pirâmides do Egito, telhados piramidais.",
                 questions: [
                     {
                         question: "Quantas faces triangulares tem uma pirâmide quadrada?",
@@ -740,6 +834,7 @@
                 image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDIwLDQwIEw4MCw0MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHBhdGggZD0iTTIwLDQwIEwxMCw3MCBMMzAsNzAgWiIgZmlsbD0iIzM0OThkYiIvPjxwYXRoIGQ9Ik04MCw0MCBMOTAsNzAgTDcwLDcwIFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNMjAsNDAgTDQwLDcwIEw2MCw3MCBMODAsNDAgWiIgZmlsbD0iIzM0OThkYiIvPjwvc3ZnPg==",
                 properties: "5 faces (2 triângulos, 3 retângulos), 9 arestas, 6 vértices",
                 description: "O prisma triangular possui duas bases triangulares paralelas e três faces laterais retangulares. É como se você pegasse um triângulo e o 'empurrasse' através do espaço.",
+                examples: "Exemplos: telhados triangulares, algumas barracas de camping.",
                 questions: [
                     {
                         question: "Quantas faces retangulares tem um prisma triangular?",
@@ -762,7 +857,8 @@
                 name: "Dodecaedro", 
                 image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDM1LDMwIEw0NSw1MCBMNTUsNTAgTDY1LDMwIFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNMjAsMzAgTDM1LDMwIEw1MCw1NSBMMzUsODAgTDIwLDU1IFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNODAsMzAgTDY1LDMwIEw1MCw1NSBMNjUsODAgTDgwLDU1IFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNMzUsMzAgTDIwLDU1IEwzNSw1NSBaIiBmaWxsPSIjNWZhYWVmIi8+PHBhdGggZD0iTTY1LDMwIEw4MCw1NSBMNjUsNTUgWiIgZmlsbD0iIzVmYWFlZiIvPjxwYXRoIGQ9Ik0zNSwzMCBMNTAsNTUgTDY1LDMwIFoiIGZpbGw9IiM4OWM0ZWYiLz48L3N2Zz4=",
                 properties: "12 faces pentagonais, 30 arestas, 20 vértices",
-                description: "O dodecaedro é um sólido platônico com doze faces pentagonais regulares. Cada vértice é formado pela junção de três pentágonos. Alguns dados de RPG têm esta forma.",
+                description: "O dodecaedro é um sólido platônico com doze faces pentagonais regulares. Cada vértice é formado pela junção de três pentágonos.",
+                examples: "Exemplos: alguns dados de RPG, estruturas moleculares complexas.",
                 questions: [
                     {
                         question: "Quantas faces tem um dodecaedro?",
@@ -785,7 +881,8 @@
                 name: "Icosaedro", 
                 image: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMTAgTDMwLDQwIEw3MCw0MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHBhdGggZD0iTTEwLDQwIEwyMCw3MCBMMCw3MCBaIiBmaWxsPSIjMzQ5OGRiIi8+PHBhdGggZD0iTTkwLDQwIEw4MCw3MCBMMTAwLDcwIFoiIGZpbGw9IiMzNDk4ZGIiLz48cGF0aCBkPSJNMzAsNDAgTDEwLDcwIEwzMCw3MCBaIiBmaWxsPSIjNWZhYWVmIi8+PHBhdGggZD0iTTcwLDQwIEw5MCw3MCBMNzAsNzAgWiIgZmlsbD0iIzVmYWFlZiIvPjxwYXRoIGQ9Ik0zMCw0MCBMNTAsNzAgTDcwLDQwIFoiIGZpbGw9IiM4OWM0ZWYiLz48L3N2Zz4=",
                 properties: "20 faces triangulares, 30 arestas, 12 vértices",
-                description: "O icosaedro é um sólido platônico com vinte faces triangulares equiláteras. Cada vértice é formado pela junção de cinco triângulos. Alguns vírus têm estruturas icosaédricas.",
+                description: "O icosaedro é um sólido platônico com vinte faces triangulares equiláteras. Cada vértice é formado pela junção de cinco triângulos.",
+                examples: "Exemplos: alguns vírus têm estruturas icosaédricas, dados de 20 lados.",
                 questions: [
                     {
                         question: "Quantas faces tem um icosaedro?",
@@ -915,6 +1012,8 @@
         let currentRankingTab = 'local';
         
         // Elementos do DOM
+        const startScreen = document.getElementById('startScreen');
+        const startGameBtn = document.getElementById('startGameBtn');
         const gameBoard = document.getElementById('gameBoard');
         const movesDisplay = document.getElementById('moves');
         const scoreDisplay = document.getElementById('score');
@@ -932,6 +1031,7 @@
         const finalScoreText = document.getElementById('finalScoreText');
         const newHighScore = document.getElementById('newHighScore');
         const saveScoreBtn = document.getElementById('saveScoreBtn');
+        const viewRankingBtn = document.getElementById('viewRankingBtn');
         const playAgainBtn = document.getElementById('playAgainBtn');
         const restartGameBtn = document.getElementById('restartGameBtn');
         const rankingModal = document.getElementById('rankingModal');
@@ -958,6 +1058,7 @@
         
         // Inicializar o jogo
         function initGame() {
+            startScreen.style.display = 'none';
             currentPhase = 1;
             score = 0;
             doublePoints = false;
@@ -987,13 +1088,21 @@
                 img.alt = shape.name;
                 card.appendChild(img);
                 
-                const properties = document.createElement('p');
-                properties.innerHTML = `<strong>Propriedades:</strong> ${shape.properties}`;
+                const properties = document.createElement('div');
+                properties.className = 'properties';
+                properties.textContent = shape.properties;
                 card.appendChild(properties);
                 
                 const description = document.createElement('p');
                 description.textContent = shape.description;
                 card.appendChild(description);
+                
+                if (shape.examples) {
+                    const examples = document.createElement('p');
+                    examples.className = 'examples';
+                    examples.textContent = shape.examples;
+                    card.appendChild(examples);
+                }
                 
                 learningCards.appendChild(card);
             });
@@ -1519,15 +1628,18 @@
         // Manipulação do ranking global (Firebase)
         async function saveToGlobalRanking(name, score) {
             try {
-                const normalizedName = name.trim();
+                const scoresRef = firebase.ref(firebase.database, 'scores');
+                const scoresQuery = firebase.query(
+                    firebase.ref(firebase.database, 'scores'),
+                    firebase.orderByChild('name')
+                );
                 
-                // Primeiro verificar se já existe um registro com esse nome (ignorando maiúsculas/minúsculas)
-                const snapshot = await database.ref('scores').orderByChild('name').once('value');
+                const snapshot = await firebase.get(scoresQuery);
                 let existingKey = null;
                 
                 snapshot.forEach((childSnapshot) => {
                     const entry = childSnapshot.val();
-                    if (entry.name.trim().toLowerCase() === normalizedName.toLowerCase()) {
+                    if (entry.name.trim().toLowerCase() === name.trim().toLowerCase()) {
                         existingKey = childSnapshot.key;
                     }
                 });
@@ -1536,15 +1648,16 @@
                     // Se já existe e a nova pontuação é maior, atualizar
                     const existingScore = snapshot.child(existingKey).val().score;
                     if (score > existingScore) {
-                        await database.ref('scores/' + existingKey).update({
+                        await firebase.set(firebase.ref(firebase.database, `scores/${existingKey}`), {
+                            name: name.trim(),
                             score: score,
                             timestamp: Date.now()
                         });
                     }
                 } else {
                     // Se não existe, adicionar novo
-                    await database.ref('scores').push({
-                        name: normalizedName,
+                    await firebase.push(scoresRef, {
+                        name: name.trim(),
                         score: score,
                         timestamp: Date.now()
                     });
@@ -1559,7 +1672,13 @@
         
         async function getGlobalRanking() {
             try {
-                const snapshot = await database.ref('scores').orderByChild('score').limitToLast(10).once('value');
+                const scoresQuery = firebase.query(
+                    firebase.ref(firebase.database, 'scores'),
+                    firebase.orderByChild('score'),
+                    firebase.limitToLast(10)
+                );
+                
+                const snapshot = await firebase.get(scoresQuery);
                 const scores = [];
                 
                 snapshot.forEach((childSnapshot) => {
@@ -1652,9 +1771,11 @@
         }
         
         // Event Listeners
+        startGameBtn.addEventListener('click', initGame);
+        
         startPhaseBtn.addEventListener('click', () => {
             previewModal.style.display = 'none';
-            startTimer(); // Iniciar o timer quando o jogador clicar em "Começar Fase"
+            startTimer();
         });
         
         nextPhaseBtn.addEventListener('click', nextPhase);
@@ -1685,8 +1806,12 @@
                 }
                 
                 newHighScore.style.display = 'none';
-                showRanking('global');
             }
+        });
+        
+        viewRankingBtn.addEventListener('click', () => {
+            gameCompleteModal.style.display = 'none';
+            showRanking('global');
         });
         
         rankingBtn.addEventListener('click', () => showRanking('local'));
@@ -1734,11 +1859,6 @@
             }
         `;
         document.head.appendChild(style);
-        
-        // Iniciar o jogo quando a página carregar
-        window.addEventListener('DOMContentLoaded', () => {
-            initGame();
-        });
     </script>
 </body>
 </html>
