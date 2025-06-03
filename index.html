@@ -5,36 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Memória Geométrica 3D</title>
     <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, set, orderByChild, limitToLast, query, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyDW2w8SG2zuSyoeBQS9NfLnMeK33TD7Lds",
-            authDomain: "memoriagame-d6ec3.firebaseapp.com",
-            projectId: "memoriagame-d6ec3",
-            storageBucket: "memoriagame-d6ec3.appspot.com",
-            messagingSenderId: "28476520800",
-            appId: "1:28476520800:web:c0ac6938ea6375498e0605",
-            measurementId: "G-M08FFYRYZX"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        
-        // Make Firebase available globally
-        window.firebase = {
-            database,
-            ref,
-            push,
-            set,
-            orderByChild,
-            limitToLast,
-            query,
-            onValue
-        };
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -78,22 +50,29 @@
             top: 0;
             left: 0;
             z-index: 1000;
+            background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
         }
         
         .start-screen h2 {
             color: #2c3e50;
             margin-bottom: 20px;
             font-size: 1.8rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
         
         .start-screen p {
             margin-bottom: 30px;
             max-width: 500px;
+            line-height: 1.5;
+            color: #34495e;
         }
         
         .start-screen img {
-            max-width: 200px;
+            width: 150px;
+            height: 150px;
             margin-bottom: 30px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+            animation: float 3s ease-in-out infinite;
         }
         
         .start-btn {
@@ -101,14 +80,24 @@
             color: white;
             border: none;
             padding: 12px 25px;
-            border-radius: 5px;
+            border-radius: 30px;
             font-size: 1.1rem;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-weight: bold;
+            letter-spacing: 1px;
         }
         
         .start-btn:hover {
             background-color: #27ae60;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+        
+        .start-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .game-container {
@@ -453,6 +442,12 @@
             100% { transform: rotate(360deg); }
         }
         
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
         /* Menu lateral */
         .menu-btn {
             position: absolute;
@@ -572,6 +567,19 @@
             
             .side-menu {
                 width: 250px;
+            }
+            
+            .start-screen img {
+                width: 120px;
+                height: 120px;
+            }
+            
+            .start-screen h2 {
+                font-size: 1.5rem;
+            }
+            
+            .start-screen p {
+                font-size: 0.9rem;
             }
         }
     </style>
@@ -707,6 +715,22 @@
     </div>
     
     <script>
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDW2w8SG2zuSyoeBQS9NfLnMeK33TD7Lds",
+            authDomain: "memoriagame-d6ec3.firebaseapp.com",
+            databaseURL: "https://memoriagame-d6ec3-default-rtdb.firebaseio.com",
+            projectId: "memoriagame-d6ec3",
+            storageBucket: "memoriagame-d6ec3.appspot.com",
+            messagingSenderId: "28476520800",
+            appId: "1:28476520800:web:c0ac6938ea6375498e0605",
+            measurementId: "G-M08FFYRYZX"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
         // Dados do jogo - formas geométricas 3D e suas propriedades
         const shapesData = [
             { 
@@ -911,9 +935,13 @@
                 description: "Ganhe pontos extras!",
                 effect: () => {
                     const bonus = Math.floor(Math.random() * 401) + 100; // 100-500 pontos
-                    score += bonus;
-                    updateScore();
-                    return `Você ganhou ${bonus} pontos extras!`;
+                    return {
+                        message: `Você ganhou ${bonus} pontos extras!`,
+                        apply: () => {
+                            score += bonus;
+                            updateScore();
+                        }
+                    };
                 }
             },
             {
@@ -921,8 +949,13 @@
                 title: "Pontos Duplicados",
                 description: "Próxima fase vale o dobro!",
                 effect: () => {
-                    showPowerUp("Próxima fase: Pontos Duplicados!");
-                    return "Na próxima fase, todos os pontos serão multiplicados por 2!";
+                    return {
+                        message: "Na próxima fase, todos os pontos serão multiplicados por 2!",
+                        apply: () => {
+                            showPowerUp("Próxima fase: Pontos Duplicados!");
+                            nextPhaseDoublePoints = true;
+                        }
+                    };
                 }
             },
             {
@@ -930,10 +963,13 @@
                 title: "Revelar Cartas",
                 description: "Ative para ver todas as cartas por 10s!",
                 effect: () => {
-                    // Armazena o power-up para ser usado depois
-                    hasRevealPowerUp = true;
-                    document.getElementById('revealCardsBtn').style.display = 'inline-block';
-                    return "Você ganhou o poder de revelar as cartas! Use o botão 'Revelar Cartas' quando quiser.";
+                    return {
+                        message: "Você ganhou o poder de revelar as cartas! Use o botão 'Revelar Cartas' quando quiser.",
+                        apply: () => {
+                            hasRevealPowerUp = true;
+                            document.getElementById('revealCardsBtn').style.display = 'inline-block';
+                        }
+                    };
                 }
             }
         ];
@@ -945,31 +981,34 @@
                 title: "Embaralhar Cartas",
                 description: "Todas as cartas serão embaralhadas!",
                 effect: () => {
-                    // Embaralhar as cartas não correspondidas
-                    const unmatchedCards = cards.filter(card => !card.matched);
-                    const unmatchedIndices = cards.map((card, index) => card.matched ? null : index).filter(val => val !== null);
-                    
-                    // Embaralhar os índices
-                    const shuffledIndices = [...unmatchedIndices].sort(() => Math.random() - 0.5);
-                    
-                    // Reorganizar as cartas no DOM
-                    const cardElements = Array.from(gameBoard.children);
-                    const newOrder = [];
-                    
-                    cards.forEach((card, index) => {
-                        if (card.matched) {
-                            newOrder.push(cardElements[index]);
-                        } else {
-                            const newIndex = shuffledIndices[unmatchedIndices.indexOf(index)];
-                            newOrder.push(cardElements[newIndex]);
+                    return {
+                        message: "As cartas foram embaralhadas!",
+                        apply: () => {
+                            // Embaralhar as cartas não correspondidas
+                            const unmatchedCards = cards.filter(card => !card.matched);
+                            const unmatchedIndices = cards.map((card, index) => card.matched ? null : index).filter(val => val !== null);
+                            
+                            // Embaralhar os índices
+                            const shuffledIndices = [...unmatchedIndices].sort(() => Math.random() - 0.5);
+                            
+                            // Reorganizar as cartas no DOM
+                            const cardElements = Array.from(gameBoard.children);
+                            const newOrder = [];
+                            
+                            cards.forEach((card, index) => {
+                                if (card.matched) {
+                                    newOrder.push(cardElements[index]);
+                                } else {
+                                    const newIndex = shuffledIndices[unmatchedIndices.indexOf(index)];
+                                    newOrder.push(cardElements[newIndex]);
+                                }
+                            });
+                            
+                            // Limpar e re-adicionar na nova ordem
+                            gameBoard.innerHTML = '';
+                            newOrder.forEach(card => gameBoard.appendChild(card));
                         }
-                    });
-                    
-                    // Limpar e re-adicionar na nova ordem
-                    gameBoard.innerHTML = '';
-                    newOrder.forEach(card => gameBoard.appendChild(card));
-                    
-                    return "As cartas foram embaralhadas!";
+                    };
                 }
             },
             {
@@ -978,9 +1017,13 @@
                 description: "Você perderá os pontos ganhos nesta fase!",
                 effect: () => {
                     const phaseScore = calculatePhaseScore();
-                    score -= phaseScore;
-                    updateScore();
-                    return `Você perdeu ${phaseScore} pontos desta fase!`;
+                    return {
+                        message: `Você perdeu ${phaseScore} pontos desta fase!`,
+                        apply: () => {
+                            score -= phaseScore;
+                            updateScore();
+                        }
+                    };
                 }
             },
             {
@@ -988,9 +1031,12 @@
                 title: "Nomes Ocultos",
                 description: "As cartas ficarão sem os nomes dos sólidos!",
                 effect: () => {
-                    // Na próxima fase, as cartas de texto não mostrarão os nomes
-                    hideShapeNames = true;
-                    return "Na próxima fase, as cartas de texto não mostrarão os nomes das formas!";
+                    return {
+                        message: "Na próxima fase, as cartas de texto não mostrarão os nomes das formas!",
+                        apply: () => {
+                            nextPhaseHideNames = true;
+                        }
+                    };
                 }
             }
         ];
@@ -1010,6 +1056,8 @@
         let hasRevealPowerUp = false;
         let hasChosenBonus = false;
         let currentRankingTab = 'local';
+        let nextPhaseDoublePoints = false;
+        let nextPhaseHideNames = false;
         
         // Elementos do DOM
         const startScreen = document.getElementById('startScreen');
@@ -1065,6 +1113,8 @@
             hideShapeNames = false;
             hasRevealPowerUp = false;
             hasChosenBonus = false;
+            nextPhaseDoublePoints = false;
+            nextPhaseHideNames = false;
             revealCardsBtn.style.display = 'none';
             updateScore();
             startPhase();
@@ -1115,6 +1165,14 @@
             matchedPairs = 0;
             moves = 0;
             updateMoves();
+            
+            // Aplicar efeitos para a próxima fase
+            doublePoints = nextPhaseDoublePoints;
+            hideShapeNames = nextPhaseHideNames;
+            
+            // Resetar flags para a próxima fase
+            nextPhaseDoublePoints = false;
+            nextPhaseHideNames = false;
             
             // Determinar quantos pares usar baseado na fase
             let pairsCount;
@@ -1474,13 +1532,15 @@
             
             if (answerIndex === questionData.correctAnswer) {
                 // Resposta correta - aplicar vantagem
-                const result = bonusCard.effect();
-                showMessage(`Resposta correta! ${result}`);
+                const bonusResult = bonusCard.effect();
+                bonusResult.apply();
+                showMessage(`Resposta correta! ${bonusResult.message}`);
             } else {
                 // Resposta errada - aplicar penalidade aleatória
                 const randomPenalty = penaltyCards[Math.floor(Math.random() * penaltyCards.length)];
                 const penaltyResult = randomPenalty.effect();
-                showMessage(`Resposta incorreta! ${penaltyResult}`);
+                penaltyResult.apply();
+                showMessage(`Resposta incorreta! ${penaltyResult.message}`);
             }
             
             // Mostrar botão para próxima fase
@@ -1563,10 +1623,6 @@
         function showPowerUp(text) {
             powerUpIndicator.textContent = text;
             powerUpIndicator.style.display = 'block';
-            
-            if (text.includes("Duplicados")) {
-                doublePoints = true;
-            }
         }
         
         // Esconder power-up
@@ -1628,15 +1684,10 @@
         // Manipulação do ranking global (Firebase)
         async function saveToGlobalRanking(name, score) {
             try {
-                const scoresRef = firebase.ref(firebase.database, 'scores');
-                const scoresQuery = firebase.query(
-                    firebase.ref(firebase.database, 'scores'),
-                    firebase.orderByChild('name')
-                );
+                const scoresRef = database.ref('scores');
+                const snapshot = await scoresRef.orderByChild('name').once('value');
                 
-                const snapshot = await firebase.get(scoresQuery);
                 let existingKey = null;
-                
                 snapshot.forEach((childSnapshot) => {
                     const entry = childSnapshot.val();
                     if (entry.name.trim().toLowerCase() === name.trim().toLowerCase()) {
@@ -1648,7 +1699,7 @@
                     // Se já existe e a nova pontuação é maior, atualizar
                     const existingScore = snapshot.child(existingKey).val().score;
                     if (score > existingScore) {
-                        await firebase.set(firebase.ref(firebase.database, `scores/${existingKey}`), {
+                        await scoresRef.child(existingKey).update({
                             name: name.trim(),
                             score: score,
                             timestamp: Date.now()
@@ -1656,7 +1707,7 @@
                     }
                 } else {
                     // Se não existe, adicionar novo
-                    await firebase.push(scoresRef, {
+                    await scoresRef.push({
                         name: name.trim(),
                         score: score,
                         timestamp: Date.now()
@@ -1672,13 +1723,11 @@
         
         async function getGlobalRanking() {
             try {
-                const scoresQuery = firebase.query(
-                    firebase.ref(firebase.database, 'scores'),
-                    firebase.orderByChild('score'),
-                    firebase.limitToLast(10)
-                );
+                const snapshot = await database.ref('scores')
+                    .orderByChild('score')
+                    .limitToLast(10)
+                    .once('value');
                 
-                const snapshot = await firebase.get(scoresQuery);
                 const scores = [];
                 
                 snapshot.forEach((childSnapshot) => {
