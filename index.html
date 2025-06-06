@@ -741,7 +741,7 @@
     </div>
     
     <!-- Botão de som -->
-    <button class="sound-toggle" id="soundToggle">
+    <button class="sound-toggle" id="soundToggle" style="display: none;">
         <i class="fas fa-volume-up"></i>
     </button>
     
@@ -969,22 +969,6 @@
         const database = firebase.database();
         const auth = firebase.auth();
         
-        // Sons do jogo
-        const sounds = {
-            flip: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3'),
-            match: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3'),
-            win: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'),
-            bonus: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3'),
-            error: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3'),
-            timer: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-clock-countdown-bleeps-916.mp3')
-        };
-        
-        // Configurar volume dos sons
-        Object.values(sounds).forEach(sound => {
-            sound.volume = 0.5;
-            sound.preload = 'auto';
-        });
-        
         // Dados do jogo - formas geométricas 3D e suas propriedades
         const shapesData = [
             { 
@@ -1194,7 +1178,6 @@
                         apply: () => {
                             score += bonus;
                             updateScore();
-                            playSound('bonus');
                         }
                     };
                 }
@@ -1209,7 +1192,6 @@
                         apply: () => {
                             showPowerUp("Próxima fase: Pontos Duplicados!");
                             nextPhaseDoublePoints = true;
-                            playSound('bonus');
                         }
                     };
                 }
@@ -1224,7 +1206,6 @@
                         apply: () => {
                             hasRevealPowerUp = true;
                             document.getElementById('revealCardsBtn').style.display = 'inline-block';
-                            playSound('bonus');
                         }
                     };
                 }
@@ -1264,7 +1245,6 @@
                             // Limpar e re-adicionar na nova ordem
                             gameBoard.innerHTML = '';
                             newOrder.forEach(card => gameBoard.appendChild(card));
-                            playSound('error');
                         }
                     };
                 }
@@ -1280,7 +1260,6 @@
                         apply: () => {
                             score -= phaseScore;
                             updateScore();
-                            playSound('error');
                         }
                     };
                 }
@@ -1294,7 +1273,6 @@
                         message: "Na próxima fase, as cartas de texto não mostrarão os nomes das formas!",
                         apply: () => {
                             nextPhaseHideNames = true;
-                            playSound('error');
                         }
                     };
                 }
@@ -1318,7 +1296,7 @@
         let currentRankingTab = 'local';
         let nextPhaseDoublePoints = false;
         let nextPhaseHideNames = false;
-        let soundEnabled = true;
+        let soundEnabled = false;
         let revealTimerInterval;
         let currentUser = null;
         
@@ -1409,21 +1387,14 @@
             loadLearningCards();
         }
         
-        // Tocar som
-        function playSound(type) {
-            if (!soundEnabled) return;
-            
-            const sound = sounds[type];
-            if (sound) {
-                sound.currentTime = 0; // Reiniciar o som se já estiver tocando
-                sound.play().catch(e => console.log("Não foi possível tocar o som:", e));
-            }
+        // Tocar som (removido)
+        function playSound() {
+            // Função removida
         }
         
-        // Alternar som
+        // Alternar som (removido)
         function toggleSound() {
-            soundEnabled = !soundEnabled;
-            soundToggle.innerHTML = soundEnabled ? '<i class="fas fa-volume-up"></i>' : '<i class="fas fa-volume-mute"></i>';
+            // Função removida
         }
         
         // Carregar cartas de aprendizado no menu lateral
@@ -1624,7 +1595,6 @@
             gameBoard.appendChild(timerElement);
             
             let seconds = 5;
-            playSound('timer');
             
             // Atualizar o timer a cada segundo
             countdownInterval = setInterval(() => {
@@ -1654,7 +1624,6 @@
             
             const cardElement = gameBoard.children[index];
             cardElement.classList.add('flipped');
-            playSound('flip');
             flippedCards.push(index);
             
             if (flippedCards.length === 2) {
@@ -1688,7 +1657,6 @@
                 }, 500);
                 
                 matchedPairs++;
-                playSound('match');
                 
                 // Verificar se completou a fase (todos os pares encontrados)
                 const totalPairs = cards.length / 2;
@@ -1744,8 +1712,6 @@
                 // Jogo completo
                 gameComplete();
             }
-            
-            playSound('win');
         }
         
         // Mostrar cartas de vantagem
@@ -1996,11 +1962,9 @@
             );
             
             if (existingIndex !== -1) {
-                // Se a nova pontuação for maior, substituir
-                if (score > ranking[existingIndex].score) {
-                    ranking[existingIndex].score = score;
-                    ranking[existingIndex].timestamp = Date.now();
-                }
+                // Não permitir que a mesma pessoa se registre mais de uma vez
+                showMessage("Você já está no ranking! Cada jogador só pode aparecer uma vez.");
+                return false;
             } else {
                 // Adicionar novo registro
                 ranking.push({ 
@@ -2037,15 +2001,9 @@
                 });
                 
                 if (existingKey) {
-                    // Se já existe e a nova pontuação é maior, atualizar
-                    const existingScore = snapshot.child(existingKey).val().score;
-                    if (score > existingScore) {
-                        await scoresRef.child(existingKey).update({
-                            name: name.trim(),
-                            score: score,
-                            timestamp: Date.now()
-                        });
-                    }
+                    // Não permitir que a mesma pessoa se registre mais de uma vez
+                    showMessage("Você já está no ranking! Cada jogador só pode aparecer uma vez.");
+                    return false;
                 } else {
                     // Se não existe, adicionar novo
                     await scoresRef.push({
@@ -2243,6 +2201,11 @@
             updateLoginStatus();
         });
         
+        // Limpar ranking local
+        function clearLocalRanking() {
+            localStorage.removeItem('geometryMemoryRanking');
+        }
+        
         // Event Listeners
         startGameBtn.addEventListener('click', initGame);
         
@@ -2278,6 +2241,8 @@
                     showMessage("Pontuação salva com sucesso no ranking local e global!");
                 } else if (localSaved) {
                     showMessage("Pontuação salva no ranking local. Falha ao conectar com o ranking global.");
+                } else if (globalSaved) {
+                    showMessage("Pontuação salva no ranking global.");
                 } else {
                     showMessage("Erro ao salvar pontuação.");
                 }
@@ -2314,7 +2279,6 @@
         
         // Menu options
         menuCards.addEventListener('click', () => {
-            toggleMenu();
             // Mostrar apenas as cartas de aprendizado
             const cards = document.querySelectorAll('.learning-card');
             cards.forEach(card => card.classList.add('active'));
@@ -2344,8 +2308,6 @@
         closeRulesBtn.addEventListener('click', () => {
             rulesModal.style.display = 'none';
         });
-        
-        soundToggle.addEventListener('click', toggleSound);
         
         // Login/Register tabs
         loginTabBtn.addEventListener('click', () => toggleLoginRegister(true));
@@ -2386,7 +2348,7 @@
         
         // Fechar menu ao clicar fora
         document.addEventListener('click', (e) => {
-            if (!sideMenu.contains(e.target) && !menuBtn.contains(e.target)) {
+            if (!sideMenu.contains(e.target) && !menuBtn.contains(e.target) && e.target.id !== 'menuCards') {
                 menuBtn.classList.remove('active');
                 sideMenu.classList.remove('active');
             }
@@ -2410,6 +2372,9 @@
             }
         `;
         document.head.appendChild(style);
+        
+        // Limpar ranking local ao iniciar
+        clearLocalRanking();
     </script>
 </body>
 </html>
