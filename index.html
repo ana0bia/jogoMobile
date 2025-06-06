@@ -318,6 +318,26 @@
             background-color: #f2f2f2;
         }
         
+        .ranking-table .gold {
+            background-color: #fffacd;
+        }
+        
+        .ranking-table .silver {
+            background-color: #f0f0f0;
+        }
+        
+        .ranking-table .bronze {
+            background-color: #ffebcd;
+        }
+        
+        .ranking-table .medal {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        
         input[type="text"], input[type="email"], input[type="password"] {
             padding: 8px;
             margin: 8px 0;
@@ -836,6 +856,7 @@
                 <div class="button-container">
                     <button id="saveScoreBtn">Salvar Pontuação</button>
                     <button id="viewRankingBtn">Ver Ranking</button>
+                    <button id="viewGlobalRankingBtn">Ver Ranking Global</button>
                 </div>
             </div>
             <div class="button-container">
@@ -1321,6 +1342,7 @@
         const newHighScore = document.getElementById('newHighScore');
         const saveScoreBtn = document.getElementById('saveScoreBtn');
         const viewRankingBtn = document.getElementById('viewRankingBtn');
+        const viewGlobalRankingBtn = document.getElementById('viewGlobalRankingBtn');
         const playAgainBtn = document.getElementById('playAgainBtn');
         const restartGameBtn = document.getElementById('restartGameBtn');
         const rankingModal = document.getElementById('rankingModal');
@@ -2101,8 +2123,24 @@
                     const date = new Date(entry.timestamp);
                     const dateStr = date.toLocaleDateString();
                     
+                    // Adicionar classes para os 3 primeiros lugares
+                    let rowClass = '';
+                    let medalIcon = '';
+                    
+                    if (index === 0) {
+                        rowClass = 'gold';
+                        medalIcon = '<i class="fas fa-medal gold-icon"></i>';
+                    } else if (index === 1) {
+                        rowClass = 'silver';
+                        medalIcon = '<i class="fas fa-medal silver-icon"></i>';
+                    } else if (index === 2) {
+                        rowClass = 'bronze';
+                        medalIcon = '<i class="fas fa-medal bronze-icon"></i>';
+                    }
+                    
+                    row.className = rowClass;
                     row.innerHTML = `
-                        <td>${index + 1}</td>
+                        <td>${medalIcon} ${index + 1}</td>
                         <td>${entry.name}</td>
                         <td>${entry.score}</td>
                         <td>${dateStr}</td>
@@ -2201,11 +2239,6 @@
             updateLoginStatus();
         });
         
-        // Limpar ranking local
-        function clearLocalRanking() {
-            localStorage.removeItem('geometryMemoryRanking');
-        }
-        
         // Event Listeners
         startGameBtn.addEventListener('click', initGame);
         
@@ -2254,6 +2287,11 @@
         });
         
         viewRankingBtn.addEventListener('click', () => {
+            gameCompleteModal.style.display = 'none';
+            showRanking('local');
+        });
+        
+        viewGlobalRankingBtn.addEventListener('click', () => {
             gameCompleteModal.style.display = 'none';
             showRanking('global');
         });
@@ -2370,11 +2408,17 @@
                 background-color: #3498db;
                 color: white;
             }
+            .gold-icon {
+                color: gold;
+            }
+            .silver-icon {
+                color: silver;
+            }
+            .bronze-icon {
+                color: #cd7f32; /* bronze */
+            }
         `;
         document.head.appendChild(style);
-        
-        // Limpar ranking local ao iniciar
-        clearLocalRanking();
     </script>
 </body>
 </html>
