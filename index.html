@@ -7,6 +7,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -317,7 +318,7 @@
             background-color: #f2f2f2;
         }
         
-        input[type="text"] {
+        input[type="text"], input[type="email"], input[type="password"] {
             padding: 8px;
             margin: 8px 0;
             width: 100%;
@@ -514,6 +515,11 @@
             padding: 10px;
             margin-bottom: 10px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none; /* Inicialmente oculto */
+        }
+        
+        .learning-card.active {
+            display: block; /* Mostrar quando ativo */
         }
         
         .learning-card h4 {
@@ -547,6 +553,145 @@
             font-style: italic;
             color: #7f8c8d;
             font-size: 0.75rem;
+        }
+        
+        /* Menu options */
+        .menu-options {
+            margin-top: 20px;
+        }
+        
+        .menu-option {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .menu-option:hover {
+            background-color: #e8f4fc;
+        }
+        
+        .menu-option i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+            color: #3498db;
+        }
+        
+        /* Rules modal */
+        .rules-content {
+            text-align: left;
+            padding: 10px;
+        }
+        
+        .rules-content h3 {
+            margin: 15px 0 5px;
+            color: #2c3e50;
+        }
+        
+        .rules-content ul {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .rules-content li {
+            margin-bottom: 5px;
+        }
+        
+        /* Sound toggle */
+        .sound-toggle {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 5;
+        }
+        
+        /* Reveal timer */
+        .reveal-timer {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            z-index: 10;
+            display: none;
+        }
+        
+        /* Card flip animation */
+        @keyframes flipIn {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(180deg); }
+        }
+        
+        @keyframes flipOut {
+            0% { transform: rotateY(180deg); }
+            100% { transform: rotateY(0deg); }
+        }
+        
+        /* Match animation */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Login modal */
+        .login-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+        
+        .login-tabs {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        
+        .login-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background-color: #ddd;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .login-tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .login-form {
+            display: none;
+        }
+        
+        .login-form.active {
+            display: block;
         }
         
         /* Ajustes para telas muito pequenas */
@@ -583,6 +728,8 @@
             }
         }
     </style>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <!-- Tela de Início -->
@@ -593,6 +740,11 @@
         <button class="start-btn" id="startGameBtn">Começar Jogo</button>
     </div>
     
+    <!-- Botão de som -->
+    <button class="sound-toggle" id="soundToggle">
+        <i class="fas fa-volume-up"></i>
+    </button>
+    
     <div class="menu-btn" id="menuBtn">
         <div class="menu-line"></div>
         <div class="menu-line"></div>
@@ -600,13 +752,37 @@
     </div>
     
     <div class="side-menu" id="sideMenu">
-        <h3>Cartas de Aprendizado</h3>
+        <h3>Menu</h3>
+        <div class="menu-options">
+            <div class="menu-option" id="menuCards">
+                <i class="fas fa-images"></i>
+                <span>Cartas de Aprendizado</span>
+            </div>
+            <div class="menu-option" id="menuRanking">
+                <i class="fas fa-trophy"></i>
+                <span>Ranking</span>
+            </div>
+            <div class="menu-option" id="menuRules">
+                <i class="fas fa-book"></i>
+                <span>Regras do Jogo</span>
+            </div>
+            <div class="menu-option" id="menuFeedback">
+                <i class="fas fa-comment-alt"></i>
+                <span>Avalie-nos</span>
+            </div>
+            <div class="menu-option" id="menuLogin">
+                <i class="fas fa-user"></i>
+                <span id="loginStatus">Login</span>
+            </div>
+        </div>
+        
         <div id="learningCards"></div>
     </div>
     
     <h1>Memória Geométrica 3D</h1>
     
     <div class="power-up-indicator" id="powerUpIndicator"></div>
+    <div class="reveal-timer" id="revealTimer"></div>
     
     <div class="game-container">
         <div class="phase-indicator" id="phaseIndicator">Fase 1: 4 pares</div>
@@ -714,6 +890,67 @@
         </div>
     </div>
     
+    <!-- Modal de Regras -->
+    <div class="modal" id="rulesModal">
+        <div class="modal-content">
+            <h2>Regras do Jogo</h2>
+            <div class="rules-content">
+                <h3>Como Jogar:</h3>
+                <ul>
+                    <li>O jogo tem 3 fases com dificuldade crescente.</li>
+                    <li>Cada fase tem um número de pares de cartas para encontrar.</li>
+                    <li>Combine a imagem da forma geométrica com suas propriedades.</li>
+                    <li>Você pode virar duas cartas por vez.</li>
+                    <li>Se as cartas formarem um par, elas ficam viradas.</li>
+                    <li>Encontre todos os pares para avançar para a próxima fase.</li>
+                </ul>
+                
+                <h3>Pontuação:</h3>
+                <ul>
+                    <li>Você ganha pontos por cada fase completada.</li>
+                    <li>Pontos extras são dados por eficiência (menos movimentos).</li>
+                    <li>Bônus especiais podem ser ganhos ao completar fases.</li>
+                </ul>
+                
+                <h3>Power-ups:</h3>
+                <ul>
+                    <li><strong>Pontos Duplicados:</strong> Próxima fase vale o dobro de pontos.</li>
+                    <li><strong>Revelar Cartas:</strong> Mostra todas as cartas por 10 segundos.</li>
+                    <li><strong>Bônus de Pontos:</strong> Ganhe pontos extras aleatórios.</li>
+                </ul>
+            </div>
+            <button id="closeRulesBtn">Fechar</button>
+        </div>
+    </div>
+    
+    <!-- Modal de Login -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <h2>Login/Cadastro</h2>
+            <div class="login-tabs">
+                <button class="login-tab active" id="loginTabBtn">Login</button>
+                <button class="login-tab" id="registerTabBtn">Cadastro</button>
+            </div>
+            
+            <div class="login-form active" id="loginForm">
+                <input type="email" id="loginEmail" placeholder="E-mail">
+                <input type="password" id="loginPassword" placeholder="Senha">
+                <button id="loginBtn">Entrar</button>
+                <p id="loginError" style="color: red; display: none;"></p>
+            </div>
+            
+            <div class="login-form" id="registerForm">
+                <input type="text" id="registerName" placeholder="Nome">
+                <input type="email" id="registerEmail" placeholder="E-mail">
+                <input type="password" id="registerPassword" placeholder="Senha">
+                <button id="registerBtn">Cadastrar</button>
+                <p id="registerError" style="color: red; display: none;"></p>
+            </div>
+            
+            <button id="closeLoginBtn">Fechar</button>
+        </div>
+    </div>
+    
     <script>
         // Configuração do Firebase
         const firebaseConfig = {
@@ -730,6 +967,23 @@
         // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const auth = firebase.auth();
+        
+        // Sons do jogo
+        const sounds = {
+            flip: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3'),
+            match: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3'),
+            win: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'),
+            bonus: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3'),
+            error: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3'),
+            timer: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-clock-countdown-bleeps-916.mp3')
+        };
+        
+        // Configurar volume dos sons
+        Object.values(sounds).forEach(sound => {
+            sound.volume = 0.5;
+            sound.preload = 'auto';
+        });
         
         // Dados do jogo - formas geométricas 3D e suas propriedades
         const shapesData = [
@@ -940,6 +1194,7 @@
                         apply: () => {
                             score += bonus;
                             updateScore();
+                            playSound('bonus');
                         }
                     };
                 }
@@ -954,6 +1209,7 @@
                         apply: () => {
                             showPowerUp("Próxima fase: Pontos Duplicados!");
                             nextPhaseDoublePoints = true;
+                            playSound('bonus');
                         }
                     };
                 }
@@ -968,6 +1224,7 @@
                         apply: () => {
                             hasRevealPowerUp = true;
                             document.getElementById('revealCardsBtn').style.display = 'inline-block';
+                            playSound('bonus');
                         }
                     };
                 }
@@ -1007,6 +1264,7 @@
                             // Limpar e re-adicionar na nova ordem
                             gameBoard.innerHTML = '';
                             newOrder.forEach(card => gameBoard.appendChild(card));
+                            playSound('error');
                         }
                     };
                 }
@@ -1022,6 +1280,7 @@
                         apply: () => {
                             score -= phaseScore;
                             updateScore();
+                            playSound('error');
                         }
                     };
                 }
@@ -1035,6 +1294,7 @@
                         message: "Na próxima fase, as cartas de texto não mostrarão os nomes das formas!",
                         apply: () => {
                             nextPhaseHideNames = true;
+                            playSound('error');
                         }
                     };
                 }
@@ -1058,6 +1318,9 @@
         let currentRankingTab = 'local';
         let nextPhaseDoublePoints = false;
         let nextPhaseHideNames = false;
+        let soundEnabled = true;
+        let revealTimerInterval;
+        let currentUser = null;
         
         // Elementos do DOM
         const startScreen = document.getElementById('startScreen');
@@ -1103,6 +1366,31 @@
         const menuBtn = document.getElementById('menuBtn');
         const sideMenu = document.getElementById('sideMenu');
         const learningCards = document.getElementById('learningCards');
+        const menuCards = document.getElementById('menuCards');
+        const menuRanking = document.getElementById('menuRanking');
+        const menuRules = document.getElementById('menuRules');
+        const menuFeedback = document.getElementById('menuFeedback');
+        const menuLogin = document.getElementById('menuLogin');
+        const loginStatus = document.getElementById('loginStatus');
+        const rulesModal = document.getElementById('rulesModal');
+        const closeRulesBtn = document.getElementById('closeRulesBtn');
+        const soundToggle = document.getElementById('soundToggle');
+        const revealTimer = document.getElementById('revealTimer');
+        const loginModal = document.getElementById('loginModal');
+        const loginTabBtn = document.getElementById('loginTabBtn');
+        const registerTabBtn = document.getElementById('registerTabBtn');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const loginEmail = document.getElementById('loginEmail');
+        const loginPassword = document.getElementById('loginPassword');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
+        const registerName = document.getElementById('registerName');
+        const registerEmail = document.getElementById('registerEmail');
+        const registerPassword = document.getElementById('registerPassword');
+        const registerBtn = document.getElementById('registerBtn');
+        const registerError = document.getElementById('registerError');
+        const closeLoginBtn = document.getElementById('closeLoginBtn');
         
         // Inicializar o jogo
         function initGame() {
@@ -1119,6 +1407,23 @@
             updateScore();
             startPhase();
             loadLearningCards();
+        }
+        
+        // Tocar som
+        function playSound(type) {
+            if (!soundEnabled) return;
+            
+            const sound = sounds[type];
+            if (sound) {
+                sound.currentTime = 0; // Reiniciar o som se já estiver tocando
+                sound.play().catch(e => console.log("Não foi possível tocar o som:", e));
+            }
+        }
+        
+        // Alternar som
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            soundToggle.innerHTML = soundEnabled ? '<i class="fas fa-volume-up"></i>' : '<i class="fas fa-volume-mute"></i>';
         }
         
         // Carregar cartas de aprendizado no menu lateral
@@ -1319,6 +1624,7 @@
             gameBoard.appendChild(timerElement);
             
             let seconds = 5;
+            playSound('timer');
             
             // Atualizar o timer a cada segundo
             countdownInterval = setInterval(() => {
@@ -1348,6 +1654,7 @@
             
             const cardElement = gameBoard.children[index];
             cardElement.classList.add('flipped');
+            playSound('flip');
             flippedCards.push(index);
             
             if (flippedCards.length === 2) {
@@ -1371,7 +1678,17 @@
                 gameBoard.children[firstIndex].classList.add('matched');
                 gameBoard.children[secondIndex].classList.add('matched');
                 
+                // Animação de pulsar quando encontra um par
+                gameBoard.children[firstIndex].style.animation = 'pulse 0.5s';
+                gameBoard.children[secondIndex].style.animation = 'pulse 0.5s';
+                
+                setTimeout(() => {
+                    gameBoard.children[firstIndex].style.animation = '';
+                    gameBoard.children[secondIndex].style.animation = '';
+                }, 500);
+                
                 matchedPairs++;
+                playSound('match');
                 
                 // Verificar se completou a fase (todos os pares encontrados)
                 const totalPairs = cards.length / 2;
@@ -1427,6 +1744,8 @@
                 // Jogo completo
                 gameComplete();
             }
+            
+            playSound('win');
         }
         
         // Mostrar cartas de vantagem
@@ -1565,20 +1884,34 @@
                 }
             });
             
+            // Mostrar timer
+            let seconds = 10;
+            revealTimer.textContent = seconds;
+            revealTimer.style.display = 'block';
+            
             // Desativar o botão temporariamente
             revealCardsBtn.disabled = true;
             
-            // Esconder depois de 10 segundos
-            setTimeout(() => {
-                cards.forEach((card, index) => {
-                    if (!card.matched) {
-                        gameBoard.children[index].classList.remove('flipped');
-                    }
-                });
+            // Atualizar timer a cada segundo
+            revealTimerInterval = setInterval(() => {
+                seconds--;
+                revealTimer.textContent = seconds;
                 
-                // Reativar o botão se ainda houver power-up
-                revealCardsBtn.disabled = !hasRevealPowerUp;
-            }, 10000);
+                if (seconds <= 0) {
+                    clearInterval(revealTimerInterval);
+                    revealTimer.style.display = 'none';
+                    
+                    // Esconder cartas
+                    cards.forEach((card, index) => {
+                        if (!card.matched) {
+                            gameBoard.children[index].classList.remove('flipped');
+                        }
+                    });
+                    
+                    // Reativar o botão se ainda houver power-up
+                    revealCardsBtn.disabled = !hasRevealPowerUp;
+                }
+            }, 1000);
             
             // Consumir o power-up
             hasRevealPowerUp = false;
@@ -1614,7 +1947,14 @@
             const isNewHighScore = ranking.length < 10 || score > ranking[ranking.length - 1].score;
             
             finalScoreText.textContent = `Você completou todas as fases com uma pontuação total de ${score}!`;
-            newHighScore.style.display = isNewHighScore ? 'block' : 'none';
+            
+            // Se o usuário estiver logado, usar o nome dele
+            if (currentUser) {
+                document.getElementById('playerName').value = currentUser.displayName || currentUser.email.split('@')[0];
+                newHighScore.style.display = 'block';
+            } else {
+                newHighScore.style.display = isNewHighScore ? 'block' : 'none';
+            }
             
             gameCompleteModal.style.display = 'flex';
         }
@@ -1679,6 +2019,7 @@
             }
             
             localStorage.setItem('geometryMemoryRanking', JSON.stringify(ranking));
+            return true;
         }
         
         // Manipulação do ranking global (Firebase)
@@ -1819,6 +2160,89 @@
             sideMenu.classList.toggle('active');
         }
         
+        // Alternar entre login e cadastro
+        function toggleLoginRegister(showLogin) {
+            if (showLogin) {
+                loginTabBtn.classList.add('active');
+                registerTabBtn.classList.remove('active');
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+            } else {
+                loginTabBtn.classList.remove('active');
+                registerTabBtn.classList.add('active');
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+            }
+        }
+        
+        // Atualizar status de login
+        function updateLoginStatus() {
+            if (currentUser) {
+                loginStatus.textContent = currentUser.displayName || currentUser.email.split('@')[0];
+            } else {
+                loginStatus.textContent = 'Login';
+            }
+        }
+        
+        // Fazer login
+        async function login(email, password) {
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                currentUser = userCredential.user;
+                updateLoginStatus();
+                showMessage("Login realizado com sucesso!");
+                loginModal.style.display = 'none';
+                return true;
+            } catch (error) {
+                console.error("Erro no login:", error);
+                loginError.textContent = error.message;
+                loginError.style.display = 'block';
+                return false;
+            }
+        }
+        
+        // Cadastrar novo usuário
+        async function register(name, email, password) {
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                currentUser = userCredential.user;
+                
+                // Atualizar nome do usuário
+                await currentUser.updateProfile({
+                    displayName: name
+                });
+                
+                updateLoginStatus();
+                showMessage("Cadastro realizado com sucesso!");
+                loginModal.style.display = 'none';
+                return true;
+            } catch (error) {
+                console.error("Erro no cadastro:", error);
+                registerError.textContent = error.message;
+                registerError.style.display = 'block';
+                return false;
+            }
+        }
+        
+        // Sair da conta
+        async function logout() {
+            try {
+                await auth.signOut();
+                currentUser = null;
+                updateLoginStatus();
+                showMessage("Você saiu da sua conta.");
+            } catch (error) {
+                console.error("Erro ao sair:", error);
+                showMessage("Erro ao sair da conta.");
+            }
+        }
+        
+        // Verificar estado de autenticação
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            updateLoginStatus();
+        });
+        
         // Event Listeners
         startGameBtn.addEventListener('click', initGame);
         
@@ -1844,17 +2268,23 @@
         saveScoreBtn.addEventListener('click', async () => {
             const playerName = document.getElementById('playerName').value.trim();
             if (playerName) {
-                saveToLocalRanking(playerName, score);
+                // Salvar no ranking local
+                const localSaved = saveToLocalRanking(playerName, score);
                 
                 // Tentar salvar no ranking global
-                const saved = await saveToGlobalRanking(playerName, score);
-                if (saved) {
+                const globalSaved = await saveToGlobalRanking(playerName, score);
+                
+                if (localSaved && globalSaved) {
                     showMessage("Pontuação salva com sucesso no ranking local e global!");
-                } else {
+                } else if (localSaved) {
                     showMessage("Pontuação salva no ranking local. Falha ao conectar com o ranking global.");
+                } else {
+                    showMessage("Erro ao salvar pontuação.");
                 }
                 
                 newHighScore.style.display = 'none';
+            } else {
+                showMessage("Por favor, digite seu nome para salvar a pontuação.");
             }
         });
         
@@ -1881,6 +2311,78 @@
         });
         
         menuBtn.addEventListener('click', toggleMenu);
+        
+        // Menu options
+        menuCards.addEventListener('click', () => {
+            toggleMenu();
+            // Mostrar apenas as cartas de aprendizado
+            const cards = document.querySelectorAll('.learning-card');
+            cards.forEach(card => card.classList.add('active'));
+        });
+        
+        menuRanking.addEventListener('click', () => {
+            toggleMenu();
+            showRanking('local');
+        });
+        
+        menuRules.addEventListener('click', () => {
+            toggleMenu();
+            rulesModal.style.display = 'flex';
+        });
+        
+        menuFeedback.addEventListener('click', () => {
+            toggleMenu();
+            window.location.href = "https://docs.google.com/forms/d/e/1FAIpQLSe1w2-QKmHarw_zLXNERODz3X1shpDnYoljxnA3a4OruX4Amg/viewform?usp=dialog";
+        });
+        
+        menuLogin.addEventListener('click', () => {
+            toggleMenu();
+            loginModal.style.display = 'flex';
+            toggleLoginRegister(true);
+        });
+        
+        closeRulesBtn.addEventListener('click', () => {
+            rulesModal.style.display = 'none';
+        });
+        
+        soundToggle.addEventListener('click', toggleSound);
+        
+        // Login/Register tabs
+        loginTabBtn.addEventListener('click', () => toggleLoginRegister(true));
+        registerTabBtn.addEventListener('click', () => toggleLoginRegister(false));
+        
+        // Login button
+        loginBtn.addEventListener('click', async () => {
+            const email = loginEmail.value.trim();
+            const password = loginPassword.value.trim();
+            
+            if (!email || !password) {
+                loginError.textContent = "Por favor, preencha todos os campos.";
+                loginError.style.display = 'block';
+                return;
+            }
+            
+            await login(email, password);
+        });
+        
+        // Register button
+        registerBtn.addEventListener('click', async () => {
+            const name = registerName.value.trim();
+            const email = registerEmail.value.trim();
+            const password = registerPassword.value.trim();
+            
+            if (!name || !email || !password) {
+                registerError.textContent = "Por favor, preencha todos os campos.";
+                registerError.style.display = 'block';
+                return;
+            }
+            
+            await register(name, email, password);
+        });
+        
+        closeLoginBtn.addEventListener('click', () => {
+            loginModal.style.display = 'none';
+        });
         
         // Fechar menu ao clicar fora
         document.addEventListener('click', (e) => {
